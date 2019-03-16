@@ -1,0 +1,19 @@
+{
+  "name": "reflow-grid",
+  "version": "0.0.1",
+  "main": "index.js",
+  "author": "Federico Moretti <dj.ikos90@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev:start": "concurrently \"tsc -w\" \"rollup src/index.js --watch --file umd/index.js --format umd --name ReflowGrid\"",
+    "build:umd": "rollup src/index.js --file umd/index.js --format umd --name ReflowGrid",
+    "build": "yarn tsc && yarn build:umd"
+  },
+  "dependencies": {
+    "rollup": "^1.6.0",
+    "typescript": "^3.3.3333"
+  },
+  "devDependencies": {
+    "concurrently": "^4.1.0"
+  }
+}

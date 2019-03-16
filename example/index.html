@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Reflow Grid</title>
+    <style>
+      #grid {
+        background-color: #fefefe;
+        border: 1px solid #333;
+      }
+
+      .item {
+        padding: 20px;
+        background-color: #546eb2;
+        border: 1px solid #4963a3;
+        color: #fefefe;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="grid" style="margin: auto">
+      <div><div class="item">Item 1</div></div>
+      <div><div class="item">Item 2</div></div>
+      <div><div class="item">Item 3</div></div>
+      <div><div class="item">Item 4</div></div>
+      <div><div class="item">Item 5</div></div>
+      <div><div class="item">Item 6</div></div>
+      <div><div class="item">Item 7</div></div>
+      <div><div class="item">Item 8</div></div>
+      <div><div class="item">Item 9</div></div>
+      <div><div class="item">Item 10</div></div>
+    </div>
+  </body>
+  <script src="../umd/index.js"></script>
+  <script>
+    const grid = document.querySelector('#grid');
+    const reflow = new ReflowGrid({ container: grid, containerWidth: 600, itemWidth: 100 });
+  </script>
+</html>
