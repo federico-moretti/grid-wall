@@ -4,8 +4,10 @@
     (global = global || self, global.ReflowGrid = factory());
 }(this, function () { 'use strict';
 
-    // track changes on dom
-    // new MutationObserver()
+    // TODO: choose to handle the container node without the width (internal resize)
+    // TODO: test with React
+    // TODO: check if can we handle the padding without a wrapper
+    // TODO: cleanup
     var ReflowGrid = /** @class */ (function () {
         function ReflowGrid(_a) {
             var container = _a.container, containerWidth = _a.containerWidth, itemWidth = _a.itemWidth;
