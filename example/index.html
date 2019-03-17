@@ -12,9 +12,18 @@
       }
 
       .item {
+        margin: 10px;
         padding: 20px;
         background-color: #546eb2;
         border: 1px solid #4963a3;
+        color: #fefefe;
+      }
+
+      .new_item {
+        margin: 10px;
+        padding: 20px;
+        background-color: #b2546e;
+        border: 1px solid #803a4d;
         color: #fefefe;
       }
 
@@ -45,7 +54,7 @@
     </style>
   </head>
   <body>
-    <div id="grid" style="margin: auto">
+    <div id="grid">
       <div><div class="item h60">Item 1</div></div>
       <div><div class="item h80">Item 2</div></div>
       <div><div class="item h120">Item 3</div></div>
@@ -63,10 +72,34 @@
       <div><div class="item h140">Item 15</div></div>
       <div><div class="item h90">Item 16</div></div>
     </div>
+
+    <button onclick="addElement()">
+      Add element
+    </button>
   </body>
   <script src="../umd/index.js"></script>
+  <script src="https://unpkg.com/lodash@4.17.11/lodash.js"></script>
   <script>
     const grid = document.querySelector('#grid');
-    const reflow = new ReflowGrid({ container: grid, containerWidth: 600, itemWidth: 100 });
+    const width = window.innerWidth;
+    const reflow = new ReflowGrid({ container: grid, containerWidth: width, itemWidth: 100 });
+
+    window.addEventListener('resize', _.debounce(() => reflow.resize(window.innerWidth - 40), 500));
+    // document.querySelector('#decrease-width').addEventListener('click', () => {
+    //   reflow.resize(400);
+    // });
+
+    function addElement() {
+      const parent = document.createElement('div');
+      const child = document.createElement('div');
+      const random = Math.floor(Math.random() * grid.children.length);
+      const heights = ['h50', 'h60', 'h70', 'h80', 'h100', 'h120'];
+      parent.appendChild(child);
+      child.textContent = `Pos ${random + 1}!`;
+
+      child.classList.add('new_item', heights[Math.floor(Math.random() * heights.length)]);
+      parent.appendChild(child);
+      grid.insertBefore(parent, grid.children[random]);
+    }
   </script>
 </html>
