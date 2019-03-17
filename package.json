@@ -5,15 +5,18 @@
   "author": "Federico Moretti <dj.ikos90@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "dev:start": "concurrently \"tsc -w\" \"rollup src/index.js --watch --file umd/index.js --format umd --name ReflowGrid\"",
+    "start": "concurrently \"yarn w:tsc\" \"yarn w:rollup\" \"yarn w:browser\"",
+    "browser": "concurrently \"tsc -w\" ",
     "build:umd": "rollup src/index.js --file umd/index.js --format umd --name ReflowGrid",
-    "build": "yarn tsc && yarn build:umd"
-  },
-  "dependencies": {
-    "rollup": "^1.6.0",
-    "typescript": "^3.3.3333"
+    "build": "yarn tsc && yarn build:umd",
+    "w:tsc": "tsc -w",
+    "w:browser": "browser-sync start --server --index 'example/index.html' --files 'umd/index.js' 'example/index.html'",
+    "w:rollup": "rollup src/index.js --watch --file umd/index.js --format umd --name ReflowGrid"
   },
   "devDependencies": {
+    "rollup": "^1.6.0",
+    "typescript": "^3.3.3333",
+    "browser-sync": "^2.26.3",
     "concurrently": "^4.1.0"
   }
 }
