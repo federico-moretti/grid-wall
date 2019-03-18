@@ -4,7 +4,7 @@
 interface ReflowGridParameters {
   container: HTMLElement;
   enableResize: boolean;
-  resizeDebounceInMs: number; //
+  resizeDebounceInMs: number;
   itemWidth: number;
 }
 
@@ -19,10 +19,6 @@ export default class ReflowGrid {
   columnsCount: number;
   columnsHeight: { [key: string]: number };
 
-  /**
-   * Constructor
-   * @resizeDebounceInMs default is 100ms
-   */
   constructor({ container, itemWidth, enableResize, resizeDebounceInMs }: ReflowGridParameters) {
     this.container = container;
     this.enableResize = enableResize || false;

@@ -1,10 +1,6 @@
 // TODO: test with React
 // TODO: cleanup
 var ReflowGrid = /** @class */ (function () {
-    /**
-     * Constructor
-     * @resizeDebounceInMs default is 100ms
-     */
     function ReflowGrid(_a) {
         var container = _a.container, itemWidth = _a.itemWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs;
         var _this = this;
