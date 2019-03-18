@@ -7,12 +7,12 @@
     <title>Reflow Grid</title>
     <style>
       #grid {
+        width: 100%;
         background-color: #fefefe;
         border: 1px solid #333;
       }
 
       .item {
-        margin: 10px;
         padding: 20px;
         background-color: #546eb2;
         border: 1px solid #4963a3;
@@ -20,7 +20,6 @@
       }
 
       .new_item {
-        margin: 10px;
         padding: 20px;
         background-color: #b2546e;
         border: 1px solid #803a4d;
@@ -55,22 +54,22 @@
   </head>
   <body>
     <div id="grid">
-      <div><div class="item h60">Item 1</div></div>
-      <div><div class="item h80">Item 2</div></div>
-      <div><div class="item h120">Item 3</div></div>
-      <div><div class="item h60">Item 4</div></div>
-      <div><div class="item h90">Item 5</div></div>
-      <div><div class="item h80">Item 6</div></div>
-      <div><div class="item h60">Item 7</div></div>
-      <div><div class="item h120">Item 8</div></div>
-      <div><div class="item h100">Item 9</div></div>
-      <div><div class="item h50">Item 10</div></div>
-      <div><div class="item h90">Item 11</div></div>
-      <div><div class="item h70">Item 12</div></div>
-      <div><div class="item h60">Item 13</div></div>
-      <div><div class="item h120">Item 14</div></div>
-      <div><div class="item h140">Item 15</div></div>
-      <div><div class="item h90">Item 16</div></div>
+      <div class="item h60">Item 1</div>
+      <div class="item h80">Item 2</div>
+      <div class="item h120">Item 3</div>
+      <div class="item h60">Item 4</div>
+      <div class="item h90">Item 5</div>
+      <div class="item h80">Item 6</div>
+      <div class="item h60">Item 7</div>
+      <div class="item h120">Item 8</div>
+      <div class="item h100">Item 9</div>
+      <div class="item h50">Item 10</div>
+      <div class="item h90">Item 11</div>
+      <div class="item h70">Item 12</div>
+      <div class="item h60">Item 13</div>
+      <div class="item h120">Item 14</div>
+      <div class="item h140">Item 15</div>
+      <div class="item h90">Item 16</div>
     </div>
 
     <button onclick="addElement()">
@@ -82,9 +81,9 @@
   <script>
     const grid = document.querySelector('#grid');
     const width = window.innerWidth;
-    const reflow = new ReflowGrid({ container: grid, containerWidth: width, itemWidth: 100 });
+    const reflow = new ReflowGrid({ container: grid, enableResize: true, itemWidth: 100 });
 
-    window.addEventListener('resize', _.debounce(() => reflow.resize(window.innerWidth - 40), 500));
+    // window.addEventListener('resize', _.debounce(() => reflow.resize(window.innerWidth - 40), 500));
     // document.querySelector('#decrease-width').addEventListener('click', () => {
     //   reflow.resize(400);
     // });
