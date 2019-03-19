@@ -7,7 +7,7 @@
     <title>Reflow Grid</title>
     <style>
       #grid {
-        width: 100%;
+        /* width: 100%; */
         background-color: #fefefe;
         border: 1px solid #333;
       }
@@ -100,13 +100,12 @@
     </button>
   </body>
   <script src="../umd/index.js"></script>
-  <script src="https://unpkg.com/lodash@4.17.11/lodash.js"></script>
   <script>
     const grid = document.querySelector('#grid');
     const width = window.innerWidth;
     const reflow = new ReflowGrid({
-      container: grid,
       enableResize: true,
+      resizeDebounceInMs: 5,
       itemWidth: 100,
       centerItems: true,
     });

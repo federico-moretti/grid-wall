@@ -10,10 +10,11 @@
         function ReflowGrid(_a) {
             var container = _a.container, itemWidth = _a.itemWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, centerItems = _a.centerItems;
             var _this = this;
+            this.missingParameter({ container: container, itemWidth: itemWidth });
             this.container = container;
             this.container.classList.add('_rg_container');
             this.children = Array.from(container.children);
-            this.centerItems = centerItems === false ? false : true;
+            this.centerItems = Boolean(centerItems);
             this.addClassesToDOM();
             this.containerWidth = this.container.clientWidth;
             this.itemWidth = itemWidth;
@@ -23,16 +24,32 @@
             this.margin = this.calculateMargin();
             this.setChildrenWidth(this.container, this.itemWidth);
             this.enableResize = enableResize || false;
-            this.resizeDebounceInMs = resizeDebounceInMs;
+            this.resizeDebounceInMs = resizeDebounceInMs || 100;
             this.listenToResize();
             this.position();
             var containerObserver = new MutationObserver(function (m, o) { return _this.handleContainerMutation(m, o); });
             containerObserver.observe(this.container, { childList: true });
         }
+        ReflowGrid.prototype.missingParameter = function (params) {
+            var missingParams = [];
+            Object.entries(params).forEach(function (_a) {
+                var name = _a[0], param = _a[1];
+                if (!param)
+                    missingParams.push(name);
+            });
+            if (missingParams.length > 0) {
+                var parameter = "parameter" + (missingParams.length > 1 ? 's' : '');
+                var message_1 = "Missing " + missingParams.length + " " + parameter + ":";
+                missingParams.forEach(function (name) { return (message_1 += "\n  " + name); });
+                throw new Error(message_1);
+            }
+        };
         ReflowGrid.prototype.calculateMargin = function () {
-            return this.centerItems
-                ? Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2)
-                : 0;
+            if (!this.centerItems)
+                return 0;
+            if (this.columnsCount <= 1)
+                return 0;
+            return Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2);
         };
         ReflowGrid.prototype.debounce = function (callback, wait) {
             var interval;
@@ -44,7 +61,7 @@
         ReflowGrid.prototype.listenToResize = function () {
             var _this = this;
             if (this.enableResize) {
-                var wait = this.resizeDebounceInMs || 100;
+                var wait = this.resizeDebounceInMs;
                 window.addEventListener('resize', this.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
             }
         };
@@ -76,11 +93,16 @@
         };
         ReflowGrid.prototype.getLowerColumn = function () {
             var columns = Object.entries(this.columnsHeight);
-            return columns.reduce(function (prev, curr) {
-                if (curr[1] >= prev[1])
-                    return prev;
-                return curr;
-            });
+            if (columns.length > 0) {
+                return columns.reduce(function (prev, curr) {
+                    if (curr[1] >= prev[1])
+                        return prev;
+                    return curr;
+                });
+            }
+            else {
+                return ['1', 0];
+            }
         };
         ReflowGrid.prototype.getMaxHeight = function () {
             var heights = Object.values(this.columnsHeight);

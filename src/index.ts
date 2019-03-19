@@ -12,7 +12,7 @@ interface ReflowGridParameters {
 export default class ReflowGrid {
   container: HTMLElement;
   enableResize: boolean;
-  resizeDebounceInMs?: number;
+  resizeDebounceInMs: number;
   children: HTMLElement[];
   itemWidth: number;
   centerItems: boolean;
@@ -28,11 +28,13 @@ export default class ReflowGrid {
     resizeDebounceInMs,
     centerItems,
   }: ReflowGridParameters) {
+    this.missingParameter({ container, itemWidth });
+
     this.container = container;
     this.container.classList.add('_rg_container');
 
     this.children = Array.from(container.children) as HTMLElement[];
-    this.centerItems = centerItems === false ? false : true;
+    this.centerItems = Boolean(centerItems);
     this.addClassesToDOM();
 
     this.containerWidth = this.container.clientWidth;
@@ -45,7 +47,7 @@ export default class ReflowGrid {
     this.setChildrenWidth(this.container, this.itemWidth);
 
     this.enableResize = enableResize || false;
-    this.resizeDebounceInMs = resizeDebounceInMs;
+    this.resizeDebounceInMs = resizeDebounceInMs || 100;
     this.listenToResize();
 
     this.position();
@@ -54,13 +56,28 @@ export default class ReflowGrid {
     containerObserver.observe(this.container, { childList: true });
   }
 
-  calculateMargin() {
-    return this.centerItems
-      ? Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2)
-      : 0;
+  missingParameter(params: { [name: string]: any }) {
+    const missingParams: string[] = [];
+    Object.entries(params).forEach(([name, param]) => {
+      if (!param) missingParams.push(name);
+    });
+
+    if (missingParams.length > 0) {
+      let parameter = `parameter${missingParams.length > 1 ? 's' : ''}`;
+      let message = `Missing ${missingParams.length} ${parameter}:`;
+      missingParams.forEach(name => (message += `\n  ${name}`));
+
+      throw new Error(message);
+    }
   }
 
-  debounce(callback: () => void, wait: number) {
+  calculateMargin(): number {
+    if (!this.centerItems) return 0;
+    if (this.columnsCount <= 1) return 0;
+    return Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2);
+  }
+
+  debounce(callback: () => void, wait: number): () => void {
     let interval: NodeJS.Timeout;
     return () => {
       clearTimeout(interval);
@@ -68,9 +85,9 @@ export default class ReflowGrid {
     };
   }
 
-  listenToResize() {
+  listenToResize(): void {
     if (this.enableResize) {
-      const wait = this.resizeDebounceInMs || 100;
+      const wait = this.resizeDebounceInMs;
       window.addEventListener(
         'resize',
         this.debounce(() => this.resize(this.container.clientWidth), wait)
@@ -78,13 +95,13 @@ export default class ReflowGrid {
     }
   }
 
-  initColumnsHeight() {
+  initColumnsHeight(): void {
     Array.from(Array(this.columnsCount)).forEach((_, index) => {
       this.columnsHeight[index + 1] = 0;
     });
   }
 
-  addClassesToDOM() {
+  addClassesToDOM(): void {
     const head = document.querySelector('head');
     if (head) {
       const style = document.createElement('style');
@@ -98,11 +115,11 @@ export default class ReflowGrid {
     }
   }
 
-  setWidth(element: HTMLElement, width: number) {
+  setWidth(element: HTMLElement, width: number): void {
     element.style.width = `${width}px`;
   }
 
-  setChildrenWidth(element: HTMLElement, width: number) {
+  setChildrenWidth(element: HTMLElement, width: number): void {
     if (element.children.length > 0) {
       Array.from(element.children).forEach(child => {
         this.setWidth(<HTMLElement>child, width);
@@ -110,20 +127,24 @@ export default class ReflowGrid {
     }
   }
 
-  getLowerColumn() {
+  getLowerColumn(): [string, number] {
     const columns = Object.entries(this.columnsHeight);
-    return columns.reduce((prev, curr) => {
-      if (curr[1] >= prev[1]) return prev;
-      return curr;
-    });
+    if (columns.length > 0) {
+      return columns.reduce((prev, curr) => {
+        if (curr[1] >= prev[1]) return prev;
+        return curr;
+      });
+    } else {
+      return ['1', 0];
+    }
   }
 
-  getMaxHeight() {
+  getMaxHeight(): number {
     const heights = Object.values(this.columnsHeight);
     return Math.max(...heights);
   }
 
-  position() {
+  position(): void {
     this.initColumnsHeight();
     this.children.forEach((child, index) => {
       let transform = `translate(${index * this.itemWidth + this.margin}px, 0px)`;
@@ -142,7 +163,7 @@ export default class ReflowGrid {
     this.container.style.height = this.getMaxHeight() + 'px';
   }
 
-  resize(containerWidth: number) {
+  resize(containerWidth: number): void {
     this.containerWidth = containerWidth;
     this.columnsCount = Math.floor(this.containerWidth / this.itemWidth);
     this.margin = this.calculateMargin();
@@ -151,7 +172,7 @@ export default class ReflowGrid {
     this.position();
   }
 
-  handleContainerMutation(mutations: MutationRecord[], observer: MutationObserver) {
+  handleContainerMutation(mutations: MutationRecord[], observer: MutationObserver): void {
     console.log('mutation');
     mutations.forEach(mutation => {
       if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
