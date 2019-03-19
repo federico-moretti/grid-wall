@@ -8,26 +8,32 @@
     // TODO: cleanup
     var ReflowGrid = /** @class */ (function () {
         function ReflowGrid(_a) {
-            var container = _a.container, itemWidth = _a.itemWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs;
+            var container = _a.container, itemWidth = _a.itemWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, centerItems = _a.centerItems;
             var _this = this;
             this.container = container;
-            this.enableResize = enableResize || false;
-            this.resizeDebounceInMs = resizeDebounceInMs;
             this.container.classList.add('_rg_container');
             this.children = Array.from(container.children);
-            this.itemWidth = itemWidth;
+            this.centerItems = centerItems === false ? false : true;
             this.addClassesToDOM();
-            var containerObserver = new MutationObserver(function (m, o) { return _this.handleContainerMutation(m, o); });
-            containerObserver.observe(this.container, { childList: true });
             this.containerWidth = this.container.clientWidth;
+            this.itemWidth = itemWidth;
             this.columnsCount = Math.floor(this.containerWidth / this.itemWidth);
-            this.margin = Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2);
             this.columnsHeight = {};
             this.initColumnsHeight();
-            this.listenToResize();
+            this.margin = this.calculateMargin();
             this.setChildrenWidth(this.container, this.itemWidth);
+            this.enableResize = enableResize || false;
+            this.resizeDebounceInMs = resizeDebounceInMs;
+            this.listenToResize();
             this.position();
+            var containerObserver = new MutationObserver(function (m, o) { return _this.handleContainerMutation(m, o); });
+            containerObserver.observe(this.container, { childList: true });
         }
+        ReflowGrid.prototype.calculateMargin = function () {
+            return this.centerItems
+                ? Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2)
+                : 0;
+        };
         ReflowGrid.prototype.debounce = function (callback, wait) {
             var interval;
             return function () {
@@ -84,7 +90,6 @@
             var _this = this;
             this.initColumnsHeight();
             this.children.forEach(function (child, index) {
-                // child.classList.add('rg-abs');
                 var transform = "translate(" + (index * _this.itemWidth + _this.margin) + "px, 0px)";
                 var column = index + 1;
                 if (column * _this.itemWidth >= _this.containerWidth) {
@@ -93,21 +98,17 @@
                     var x = (column - 1) * _this.itemWidth;
                     transform = "translate(" + (_this.margin + x) + "px, " + lowerColumn[1] + "px)";
                 }
-                console.log(child.offsetHeight, child.clientHeight);
                 _this.columnsHeight[column] += child.offsetHeight;
-                if (child.style.transform !== transform) {
+                if (child.style.transform !== transform)
                     child.style.transform = transform;
-                }
             });
             this.container.style.height = this.getMaxHeight() + 'px';
-            console.log(this.columnsHeight);
         };
         ReflowGrid.prototype.resize = function (containerWidth) {
             this.containerWidth = containerWidth;
             this.columnsCount = Math.floor(this.containerWidth / this.itemWidth);
-            this.margin = Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2);
+            this.margin = this.calculateMargin();
             this.columnsHeight = {};
-            // this.setWidth(this.container, this.containerWidth);
             this.position();
         };
         ReflowGrid.prototype.handleContainerMutation = function (mutations, observer) {
@@ -116,12 +117,10 @@
             mutations.forEach(function (mutation) {
                 if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                     mutation.addedNodes.forEach(function (child) {
-                        if (child instanceof HTMLElement) {
+                        if (child instanceof HTMLElement)
                             _this.setWidth(child, _this.itemWidth);
-                        }
                     });
                     _this.children = Array.from(_this.container.children);
-                    // this.resize(this.containerWidth);
                     _this.position();
                 }
             });

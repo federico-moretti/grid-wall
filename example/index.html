@@ -12,6 +12,24 @@
         border: 1px solid #333;
       }
 
+      .header {
+        text-align: center;
+        background-color: #54b298;
+        padding: 50px;
+        color: white;
+      }
+
+      .columns {
+        display: grid;
+        grid-template-columns: 80px 1fr 80px;
+      }
+
+      .column {
+        min-width: 80px;
+        background-color: #54b298;
+        color: white;
+      }
+
       .item {
         padding: 20px;
         background-color: #546eb2;
@@ -53,25 +71,30 @@
     </style>
   </head>
   <body>
-    <div id="grid">
-      <div class="item h60">Item 1</div>
-      <div class="item h80">Item 2</div>
-      <div class="item h120">Item 3</div>
-      <div class="item h60">Item 4</div>
-      <div class="item h90">Item 5</div>
-      <div class="item h80">Item 6</div>
-      <div class="item h60">Item 7</div>
-      <div class="item h120">Item 8</div>
-      <div class="item h100">Item 9</div>
-      <div class="item h50">Item 10</div>
-      <div class="item h90">Item 11</div>
-      <div class="item h70">Item 12</div>
-      <div class="item h60">Item 13</div>
-      <div class="item h120">Item 14</div>
-      <div class="item h140">Item 15</div>
-      <div class="item h90">Item 16</div>
+    <div class="header">Reflow Grid</div>
+    <div class="columns">
+      <div class="column">left column</div>
+      <div id="grid">
+        <div class="item h60">Item 1</div>
+        <div class="item h80">Item 2</div>
+        <div class="item h120">Item 3</div>
+        <div class="item h60">Item 4</div>
+        <div class="item h90">Item 5</div>
+        <div class="item h80">Item 6</div>
+        <div class="item h60">Item 7</div>
+        <div class="item h120">Item 8</div>
+        <div class="item h100">Item 9</div>
+        <div class="item h50">Item 10</div>
+        <div class="item h90">Item 11</div>
+        <div class="item h70">Item 12</div>
+        <div class="item h60">Item 13</div>
+        <div class="item h120">Item 14</div>
+        <div class="item h140">Item 15</div>
+        <div class="item h90">Item 16</div>
+      </div>
+      <div class="column">right column</div>
     </div>
-
+    <hr />
     <button onclick="addElement()">
       Add element
     </button>
@@ -81,7 +104,12 @@
   <script>
     const grid = document.querySelector('#grid');
     const width = window.innerWidth;
-    const reflow = new ReflowGrid({ container: grid, enableResize: true, itemWidth: 100 });
+    const reflow = new ReflowGrid({
+      container: grid,
+      enableResize: true,
+      itemWidth: 100,
+      centerItems: true,
+    });
 
     // window.addEventListener('resize', _.debounce(() => reflow.resize(window.innerWidth - 40), 500));
     // document.querySelector('#decrease-width').addEventListener('click', () => {

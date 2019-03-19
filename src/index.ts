@@ -4,6 +4,7 @@
 interface ReflowGridParameters {
   container: HTMLElement;
   enableResize: boolean;
+  centerItems: boolean;
   resizeDebounceInMs: number;
   itemWidth: number;
 }
@@ -14,32 +15,49 @@ export default class ReflowGrid {
   resizeDebounceInMs?: number;
   children: HTMLElement[];
   itemWidth: number;
+  centerItems: boolean;
   margin: number;
   containerWidth: number;
   columnsCount: number;
   columnsHeight: { [key: string]: number };
 
-  constructor({ container, itemWidth, enableResize, resizeDebounceInMs }: ReflowGridParameters) {
+  constructor({
+    container,
+    itemWidth,
+    enableResize,
+    resizeDebounceInMs,
+    centerItems,
+  }: ReflowGridParameters) {
     this.container = container;
+    this.container.classList.add('_rg_container');
+
+    this.children = Array.from(container.children) as HTMLElement[];
+    this.centerItems = centerItems === false ? false : true;
+    this.addClassesToDOM();
+
+    this.containerWidth = this.container.clientWidth;
+    this.itemWidth = itemWidth;
+    this.columnsCount = Math.floor(this.containerWidth / this.itemWidth);
+    this.columnsHeight = {};
+    this.initColumnsHeight();
+
+    this.margin = this.calculateMargin();
+    this.setChildrenWidth(this.container, this.itemWidth);
+
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs;
-    this.container.classList.add('_rg_container');
-    this.children = Array.from(container.children) as HTMLElement[];
-    this.itemWidth = itemWidth;
-    this.addClassesToDOM();
+    this.listenToResize();
+
+    this.position();
 
     const containerObserver = new MutationObserver((m, o) => this.handleContainerMutation(m, o));
     containerObserver.observe(this.container, { childList: true });
+  }
 
-    this.containerWidth = this.container.clientWidth;
-    this.columnsCount = Math.floor(this.containerWidth / this.itemWidth);
-    this.margin = Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2);
-    this.columnsHeight = {};
-
-    this.initColumnsHeight();
-    this.listenToResize();
-    this.setChildrenWidth(this.container, this.itemWidth);
-    this.position();
+  calculateMargin() {
+    return this.centerItems
+      ? Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2)
+      : 0;
   }
 
   debounce(callback: () => void, wait: number) {
@@ -108,7 +126,6 @@ export default class ReflowGrid {
   position() {
     this.initColumnsHeight();
     this.children.forEach((child, index) => {
-      // child.classList.add('rg-abs');
       let transform = `translate(${index * this.itemWidth + this.margin}px, 0px)`;
       let column = index + 1;
 
@@ -119,23 +136,18 @@ export default class ReflowGrid {
         transform = `translate(${this.margin + x}px, ${lowerColumn[1]}px)`;
       }
 
-      console.log(child.offsetHeight, child.clientHeight);
       this.columnsHeight[column] += child.offsetHeight;
-      if (child.style.transform !== transform) {
-        child.style.transform = transform;
-      }
+      if (child.style.transform !== transform) child.style.transform = transform;
     });
     this.container.style.height = this.getMaxHeight() + 'px';
-    console.log(this.columnsHeight);
   }
 
   resize(containerWidth: number) {
     this.containerWidth = containerWidth;
     this.columnsCount = Math.floor(this.containerWidth / this.itemWidth);
-    this.margin = Math.floor((this.containerWidth - this.columnsCount * this.itemWidth) / 2);
+    this.margin = this.calculateMargin();
     this.columnsHeight = {};
 
-    // this.setWidth(this.container, this.containerWidth);
     this.position();
   }
 
@@ -144,12 +156,10 @@ export default class ReflowGrid {
     mutations.forEach(mutation => {
       if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
         mutation.addedNodes.forEach(child => {
-          if (child instanceof HTMLElement) {
-            this.setWidth(child, this.itemWidth);
-          }
+          if (child instanceof HTMLElement) this.setWidth(child, this.itemWidth);
         });
         this.children = Array.from(this.container.children) as HTMLElement[];
-        // this.resize(this.containerWidth);
+
         this.position();
       }
     });
