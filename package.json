@@ -7,11 +7,11 @@
   "scripts": {
     "start": "concurrently \"yarn w:tsc\" \"yarn w:rollup\" \"yarn w:browser\"",
     "browser": "concurrently \"tsc -w\" ",
-    "build:umd": "rollup src/index.js --file umd/index.js --format umd --name ReflowGrid",
+    "build:umd": "rollup dist/index.js --file umd/index.js --format umd --name ReflowGrid",
     "build": "yarn tsc && yarn build:umd",
     "w:tsc": "tsc -w",
     "w:browser": "browser-sync start --server --index 'example/index.html' --files 'umd/index.js' 'example/index.html'",
-    "w:rollup": "rollup src/index.js --watch --file umd/index.js --format umd --name ReflowGrid"
+    "w:rollup": "rollup dist/index.js --watch --file umd/index.js --format umd --name ReflowGrid"
   },
   "devDependencies": {
     "browser-sync": "^2.26.3",
