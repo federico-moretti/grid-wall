@@ -6,7 +6,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Reflow Grid</title>
     <style>
-      #grid {
+      .grid {
+        flex: 1 0 auto;
         /* width: 100%; */
         background-color: #fefefe;
         border: 1px solid #333;
@@ -17,15 +18,17 @@
         background-color: #54b298;
         padding: 50px;
         color: white;
+        margin-bottom: 20px;
       }
 
       .columns {
-        display: grid;
-        grid-template-columns: 80px 1fr 80px;
+        display: flex;
+        width: 100%;
       }
 
-      .column {
-        min-width: 80px;
+      .left_column {
+        min-width: 150px;
+        min-height: 50px;
         background-color: #54b298;
         color: white;
       }
@@ -35,6 +38,7 @@
         background-color: #546eb2;
         border: 1px solid #4963a3;
         color: #fefefe;
+        user-select: none;
       }
 
       .new_item {
@@ -42,88 +46,61 @@
         background-color: #b2546e;
         border: 1px solid #803a4d;
         color: #fefefe;
+        user-select: none;
       }
 
-      .h50 {
-        height: 50px;
-      }
-      .h60 {
-        height: 60px;
-      }
-      .h70 {
-        height: 70px;
-      }
-      .h80 {
-        height: 80px;
-      }
-      .h90 {
-        height: 90px;
-      }
-      .h100 {
-        height: 100px;
-      }
-      .h120 {
-        height: 120px;
-      }
-      .h140 {
-        height: 140px;
+      @media (max-width: 600px) {
+        .columns {
+          flex-direction: column;
+        }
       }
     </style>
   </head>
   <body>
     <div class="header">Reflow Grid</div>
     <div class="columns">
-      <div class="column">left column</div>
-      <div id="grid">
-        <div class="item h60">Item 1</div>
-        <div class="item h80">Item 2</div>
-        <div class="item h120">Item 3</div>
-        <div class="item h60">Item 4</div>
-        <div class="item h90">Item 5</div>
-        <div class="item h80">Item 6</div>
-        <div class="item h60">Item 7</div>
-        <div class="item h120">Item 8</div>
-        <div class="item h100">Item 9</div>
-        <div class="item h50">Item 10</div>
-        <div class="item h90">Item 11</div>
-        <div class="item h70">Item 12</div>
-        <div class="item h60">Item 13</div>
-        <div class="item h120">Item 14</div>
-        <div class="item h140">Item 15</div>
-        <div class="item h90">Item 16</div>
+      <div class="left_column">
+        <p>Sidebar</p>
+        <button onclick="addElement()">
+          Add element
+        </button>
       </div>
-      <div class="column">right column</div>
+      <div class="grid"></div>
     </div>
     <hr />
-    <button onclick="addElement()">
-      Add element
-    </button>
   </body>
   <script src="../umd/index.js"></script>
   <script>
-    const grid = document.querySelector('#grid');
-    const width = window.innerWidth;
-    const reflow = new ReflowGrid({
-      enableResize: true,
-      resizeDebounceInMs: 5,
-      itemWidth: 100,
-      centerItems: true,
+    const grid = document.querySelector('.grid');
+    let items = [...Array(15)];
+    items.forEach((_, i) => {
+      const div = document.createElement('div');
+      div.textContent = 'Item ' + (i + 1);
+      div.classList.add('item');
+      div.style.height = Math.floor(Math.random() * (200 - 50) + 50) + 'px';
+      div.onclick = () => {
+        div.style.height = div.offsetHeight + 10 + 'px';
+      };
+      grid.appendChild(div);
     });
 
-    // window.addEventListener('resize', _.debounce(() => reflow.resize(window.innerWidth - 40), 500));
-    // document.querySelector('#decrease-width').addEventListener('click', () => {
-    //   reflow.resize(400);
-    // });
+    const width = window.innerWidth;
+    const reflow = new ReflowGrid({
+      container: grid,
+      enableResize: true,
+      resizeDebounceInMs: 50,
+      itemWidth: 100,
+      centerItems: false,
+    });
 
     function addElement() {
       const parent = document.createElement('div');
       const child = document.createElement('div');
       const random = Math.floor(Math.random() * grid.children.length);
-      const heights = ['h50', 'h60', 'h70', 'h80', 'h100', 'h120'];
       parent.appendChild(child);
       child.textContent = `Pos ${random + 1}!`;
-
-      child.classList.add('new_item', heights[Math.floor(Math.random() * heights.length)]);
+      child.style.height = Math.floor(Math.random() * (200 - 50) + 50) + 'px';
+      child.classList.add('new_item');
       parent.appendChild(child);
       grid.insertBefore(parent, grid.children[random]);
     }

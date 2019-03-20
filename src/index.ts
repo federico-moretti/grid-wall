@@ -14,12 +14,13 @@ export default class ReflowGrid {
   enableResize: boolean;
   resizeDebounceInMs: number;
   children: HTMLElement[];
+  childrenHeights: { [name: string]: number };
   itemWidth: number;
   centerItems: boolean;
   margin: number;
   containerWidth: number;
   columnsCount: number;
-  columnsHeight: { [key: string]: number };
+  columnsHeight: number[];
 
   constructor({
     container,
@@ -33,27 +34,29 @@ export default class ReflowGrid {
     this.container = container;
     this.container.classList.add('_rg_container');
 
-    this.children = Array.from(container.children) as HTMLElement[];
+    this.children = Array.from(container.childNodes) as HTMLElement[];
     this.centerItems = Boolean(centerItems);
     this.addClassesToDOM();
 
     this.containerWidth = this.container.clientWidth;
     this.itemWidth = itemWidth;
+    this.childrenHeights = {};
     this.columnsCount = Math.floor(this.containerWidth / this.itemWidth);
-    this.columnsHeight = {};
-    this.initColumnsHeight();
+    this.columnsHeight = [];
 
     this.margin = this.calculateMargin();
-    this.setChildrenWidth(this.container, this.itemWidth);
+    this.setChildrenWidth(this.itemWidth);
+    this.setChildrenHeight();
 
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
     this.listenToResize();
 
-    this.position();
+    this.reflow();
 
     const containerObserver = new MutationObserver((m, o) => this.handleContainerMutation(m, o));
     containerObserver.observe(this.container, { childList: true });
+    this.addMutationObserverToChildren();
   }
 
   missingParameter(params: { [name: string]: any }) {
@@ -95,10 +98,23 @@ export default class ReflowGrid {
     }
   }
 
-  initColumnsHeight(): void {
-    Array.from(Array(this.columnsCount)).forEach((_, index) => {
-      this.columnsHeight[index + 1] = 0;
+  setChildrenHeight(): void {
+    this.children.forEach(child => {
+      let id = child.getAttribute('data-rg-id');
+      if (!id) {
+        id = Math.random()
+          .toString(36)
+          .substr(2, 9);
+        child.setAttribute('data-rg-id', id);
+        this.childrenHeights[id] = child.offsetHeight;
+      } else {
+        this.childrenHeights[id] = child.offsetHeight;
+      }
     });
+  }
+
+  resetColumnsHeight(): void {
+    this.columnsHeight = [];
   }
 
   addClassesToDOM(): void {
@@ -119,24 +135,34 @@ export default class ReflowGrid {
     element.style.width = `${width}px`;
   }
 
-  setChildrenWidth(element: HTMLElement, width: number): void {
-    if (element.children.length > 0) {
-      Array.from(element.children).forEach(child => {
+  setChildrenWidth(width: number): void {
+    if (this.children.length > 0) {
+      this.children.forEach(child => {
         this.setWidth(<HTMLElement>child, width);
       });
     }
   }
 
-  getLowerColumn(): [string, number] {
-    const columns = Object.entries(this.columnsHeight);
-    if (columns.length > 0) {
-      return columns.reduce((prev, curr) => {
-        if (curr[1] >= prev[1]) return prev;
-        return curr;
+  addMutationObserverToChildren(): void {
+    if (this.children.length > 0) {
+      this.children.forEach(child => {
+        const containerObserver = new MutationObserver((m, o) => this.handleChildrenMutation(m, o));
+        containerObserver.observe(child, { attributes: true, attributeOldValue: true });
       });
-    } else {
-      return ['1', 0];
     }
+  }
+
+  getLowerColumn(): { index: number; height: number } {
+    const lower = { index: 0, height: 0 };
+    if (this.columnsHeight.length > 0) {
+      this.columnsHeight.forEach((height, index) => {
+        if (lower.height === 0 || lower.height >= height) {
+          lower.height = height;
+          lower.index = index;
+        }
+      });
+    }
+    return lower;
   }
 
   getMaxHeight(): number {
@@ -144,36 +170,50 @@ export default class ReflowGrid {
     return Math.max(...heights);
   }
 
-  position(): void {
-    this.initColumnsHeight();
+  reflow(): void {
+    this.resetColumnsHeight();
     this.children.forEach((child, index) => {
-      let transform = `translate(${index * this.itemWidth + this.margin}px, 0px)`;
-      let column = index + 1;
+      let column = index;
+      let transform = `translate(${column * this.itemWidth + this.margin}px, 0px)`;
 
-      if (column * this.itemWidth >= this.containerWidth) {
+      if ((column + 1) * this.itemWidth >= this.containerWidth) {
         const lowerColumn = this.getLowerColumn();
-        column = Number.parseInt(lowerColumn[0]);
-        const x = (column - 1) * this.itemWidth;
-        transform = `translate(${this.margin + x}px, ${lowerColumn[1]}px)`;
+        column = lowerColumn.index;
+        const x = column * this.itemWidth;
+        transform = `translate(${this.margin + x}px, ${lowerColumn.height}px)`;
       }
 
-      this.columnsHeight[column] += child.offsetHeight;
+      this.columnsHeight[column] = Number.isInteger(this.columnsHeight[column])
+        ? this.columnsHeight[column] + child.offsetHeight
+        : child.offsetHeight;
       if (child.style.transform !== transform) child.style.transform = transform;
     });
     this.container.style.height = this.getMaxHeight() + 'px';
+    this.setChildrenHeight();
   }
 
   resize(containerWidth: number): void {
     this.containerWidth = containerWidth;
     this.columnsCount = Math.floor(this.containerWidth / this.itemWidth);
     this.margin = this.calculateMargin();
-    this.columnsHeight = {};
+    this.resetColumnsHeight();
 
-    this.position();
+    this.reflow();
+  }
+
+  handleChildrenMutation(mutations: MutationRecord[], observer: MutationObserver): void {
+    mutations.forEach(mutation => {
+      const elem = mutation.target as HTMLElement;
+      const id = elem.getAttribute('data-rg-id');
+
+      if (id) {
+        const storedHeight = this.childrenHeights[id];
+        if (storedHeight !== elem.offsetHeight) this.reflow();
+      }
+    });
   }
 
   handleContainerMutation(mutations: MutationRecord[], observer: MutationObserver): void {
-    console.log('mutation');
     mutations.forEach(mutation => {
       if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
         mutation.addedNodes.forEach(child => {
@@ -181,7 +221,7 @@ export default class ReflowGrid {
         });
         this.children = Array.from(this.container.children) as HTMLElement[];
 
-        this.position();
+        this.reflow();
       }
     });
   }
