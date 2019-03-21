@@ -21,7 +21,8 @@ export default class ReflowGrid {
   containerWidth: number;
   columnsCount: number;
   columnsHeight: number[];
-  childNextId: number;
+  childLastId: number;
+  containerClassName: string;
 
   constructor({
     container,
@@ -33,31 +34,29 @@ export default class ReflowGrid {
     this.missingParameter({ container, childrenWidth });
 
     this.container = container;
-    this.container.classList.add('_rg_container');
-    this.children = Array.from(container.childNodes) as HTMLElement[];
-    this.centerChildren = Boolean(centerChildren);
-    this.addClassesToDOM();
     this.containerWidth = this.container.clientWidth;
     this.childrenWidth = childrenWidth;
-
-    this.childrenHeights = {};
-    this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
+    this.centerChildren = Boolean(centerChildren);
     this.columnsHeight = [];
-
-    this.margin = this.calculateMargin();
-    this.setChildrenWidth(this.childrenWidth);
-    this.setChildrenHeight();
-    this.childNextId = 0;
-
+    this.childrenHeights = {};
+    this.childLastId = 0;
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
+    this.containerClassName = 'rg-container';
+
+    this.container.classList.add(this.containerClassName);
+    this.children = Array.from(container.childNodes) as HTMLElement[];
+    this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
+
+    this.addStyleToDOM();
+    this.margin = this.calculateMargin();
+    this.setChildrenWidth();
+    this.setChildrenHeight();
     this.listenToResize();
+    this.addMutationObserverToContainer();
+    this.addMutationObserverToChildren();
 
     this.reflow();
-
-    const containerObserver = new MutationObserver((m, o) => this.handleContainerMutation(m, o));
-    containerObserver.observe(this.container, { childList: true });
-    this.addMutationObserverToChildren();
   }
 
   missingParameter(params: { [name: string]: any }) {
@@ -103,14 +102,11 @@ export default class ReflowGrid {
     this.children.forEach(child => {
       let id = child.getAttribute('data-rg-id');
       if (!id) {
-        id = Math.random()
-          .toString(36)
-          .substr(2, 9);
+        this.childLastId = this.childLastId + 1;
+        id = this.childLastId.toString();
         child.setAttribute('data-rg-id', id);
-        this.childrenHeights[id] = child.offsetHeight;
-      } else {
-        this.childrenHeights[id] = child.offsetHeight;
       }
+      this.childrenHeights[id] = child.offsetHeight;
     });
   }
 
@@ -118,15 +114,21 @@ export default class ReflowGrid {
     this.columnsHeight = [];
   }
 
-  addClassesToDOM(): void {
+  addStyleToDOM(): void {
     const head = document.querySelector('head');
     if (head) {
       const style = document.createElement('style');
       const css = document.createTextNode(`
-      /* reflow grid classes */
-      ._rg_container {box-sizing:content-box;}
-      ._rg_container > * {box-sizing:border-box;position:absolute;transition:transform ease-in 0.2s;}
-      `);
+/* reflow grid */
+.${this.containerClassName}{
+  box-sizing:content-box;
+}
+.${this.containerClassName}>*{
+  box-sizing:border-box;
+  position:absolute;
+  transition:transform ease-in 0.2s;
+}
+`);
       style.appendChild(css);
       head.appendChild(style);
     }
@@ -136,19 +138,24 @@ export default class ReflowGrid {
     element.style.width = `${width}px`;
   }
 
-  setChildrenWidth(width: number): void {
+  setChildrenWidth(): void {
     if (this.children.length > 0) {
       this.children.forEach(child => {
-        this.setWidth(<HTMLElement>child, width);
+        this.setWidth(<HTMLElement>child, this.childrenWidth);
       });
     }
+  }
+
+  addMutationObserverToContainer(): void {
+    const containerObserver = new MutationObserver(m => this.handleContainerMutation(m));
+    containerObserver.observe(this.container, { childList: true });
   }
 
   addMutationObserverToChildren(): void {
     if (this.children.length > 0) {
       this.children.forEach(child => {
-        const containerObserver = new MutationObserver((m, o) => this.handleChildrenMutation(m, o));
-        containerObserver.observe(child, { attributes: true, attributeOldValue: true });
+        const containerObserver = new MutationObserver(m => this.handleChildrenMutation(m));
+        containerObserver.observe(child, { attributes: true });
       });
     }
   }
@@ -202,7 +209,7 @@ export default class ReflowGrid {
     this.reflow();
   }
 
-  handleChildrenMutation(mutations: MutationRecord[], observer: MutationObserver): void {
+  handleChildrenMutation(mutations: MutationRecord[]): void {
     mutations.forEach(mutation => {
       const elem = mutation.target as HTMLElement;
       const id = elem.getAttribute('data-rg-id');
@@ -214,7 +221,7 @@ export default class ReflowGrid {
     });
   }
 
-  handleContainerMutation(mutations: MutationRecord[], observer: MutationObserver): void {
+  handleContainerMutation(mutations: MutationRecord[]): void {
     mutations.forEach(mutation => {
       if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
         mutation.addedNodes.forEach(child => {
