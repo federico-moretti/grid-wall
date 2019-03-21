@@ -4,7 +4,7 @@
 interface ReflowGridParameters {
   container: HTMLElement;
   enableResize: boolean;
-  centerChildren: boolean;
+  margin: 'auto' | 'left' | 'right';
   resizeDebounceInMs: number;
   childrenWidth: number;
   childrenStyleTransition: string;
@@ -18,8 +18,8 @@ export default class ReflowGrid {
   childrenHeights: { [name: string]: number };
   childrenWidth: number;
   childrenStyleTransition: string;
-  centerChildren: boolean;
-  margin: number;
+  margin: 'center' | 'left' | 'right';
+  marginWidth: number;
   containerWidth: number;
   columnsCount: number;
   columnsHeight: number[];
@@ -31,15 +31,14 @@ export default class ReflowGrid {
     childrenWidth,
     enableResize,
     resizeDebounceInMs,
-    centerChildren,
+    margin,
     childrenStyleTransition,
   }: ReflowGridParameters) {
     this.missingParameter({ container, childrenWidth });
 
     this.container = container;
-    this.containerWidth = this.container.clientWidth;
     this.childrenWidth = childrenWidth;
-    this.centerChildren = Boolean(centerChildren);
+    this.margin = margin || 'center';
     this.columnsHeight = [];
     this.childrenHeights = {};
     this.childLastId = 0;
@@ -48,15 +47,18 @@ export default class ReflowGrid {
     this.containerClassName = 'rg-container';
     this.childrenStyleTransition = childrenStyleTransition || 'transform ease-in 0.2s';
 
-    this.container.classList.add(this.containerClassName);
+    // we have to apply styles to DOM before doing any calculation
+    this.addStyleToDOM();
+
     this.children = Array.from(container.childNodes) as HTMLElement[];
+    this.container.classList.add(this.containerClassName);
+    this.containerWidth = this.container.clientWidth;
     this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
 
-    this.addStyleToDOM();
-    this.margin = this.calculateMargin();
     this.setChildrenWidth();
     this.setChildrenHeight();
     this.listenToResize();
+    this.marginWidth = this.calculateMargin();
     this.addMutationObserverToContainer();
     this.addMutationObserverToChildren();
 
@@ -79,9 +81,11 @@ export default class ReflowGrid {
   }
 
   calculateMargin(): number {
-    if (!this.centerChildren) return 0;
+    if (this.margin === 'right') return 0;
     if (this.columnsCount <= 1) return 0;
-    return Math.floor((this.containerWidth - this.columnsCount * this.childrenWidth) / 2);
+    const remainingSpace = this.containerWidth - this.columnsCount * this.childrenWidth;
+    if (this.margin === 'left') return remainingSpace;
+    return Math.floor(remainingSpace / 2);
   }
 
   debounce(callback: () => void, wait: number): () => void {
@@ -186,13 +190,13 @@ export default class ReflowGrid {
     this.resetColumnsHeight();
     this.children.forEach((child, index) => {
       let column = index;
-      let transform = `translate(${column * this.childrenWidth + this.margin}px, 0px)`;
+      let transform = `translate(${column * this.childrenWidth + this.marginWidth}px, 0px)`;
 
       if ((column + 1) * this.childrenWidth >= this.containerWidth) {
         const lowerColumn = this.getLowerColumn();
         column = lowerColumn.index;
         const x = column * this.childrenWidth;
-        transform = `translate(${this.margin + x}px, ${lowerColumn.height}px)`;
+        transform = `translate(${this.marginWidth + x}px, ${lowerColumn.height}px)`;
       }
 
       this.columnsHeight[column] = Number.isInteger(this.columnsHeight[column])
@@ -207,7 +211,7 @@ export default class ReflowGrid {
   resize(containerWidth: number): void {
     this.containerWidth = containerWidth;
     this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
-    this.margin = this.calculateMargin();
+    this.marginWidth = this.calculateMargin();
     this.resetColumnsHeight();
 
     this.reflow();

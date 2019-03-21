@@ -1,7 +1,7 @@
 interface ReflowGridParameters {
     container: HTMLElement;
     enableResize: boolean;
-    centerChildren: boolean;
+    margin: 'auto' | 'left' | 'right';
     resizeDebounceInMs: number;
     childrenWidth: number;
     childrenStyleTransition: string;
@@ -16,14 +16,14 @@ export default class ReflowGrid {
     };
     childrenWidth: number;
     childrenStyleTransition: string;
-    centerChildren: boolean;
-    margin: number;
+    margin: 'center' | 'left' | 'right';
+    marginWidth: number;
     containerWidth: number;
     columnsCount: number;
     columnsHeight: number[];
     childLastId: number;
     containerClassName: string;
-    constructor({ container, childrenWidth, enableResize, resizeDebounceInMs, centerChildren, childrenStyleTransition, }: ReflowGridParameters);
+    constructor({ container, childrenWidth, enableResize, resizeDebounceInMs, margin, childrenStyleTransition, }: ReflowGridParameters);
     missingParameter(params: {
         [name: string]: any;
     }): void;

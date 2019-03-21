@@ -2,12 +2,11 @@
 // TODO: cleanup
 var ReflowGrid = /** @class */ (function () {
     function ReflowGrid(_a) {
-        var container = _a.container, childrenWidth = _a.childrenWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, centerChildren = _a.centerChildren, childrenStyleTransition = _a.childrenStyleTransition;
+        var container = _a.container, childrenWidth = _a.childrenWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, margin = _a.margin, childrenStyleTransition = _a.childrenStyleTransition;
         this.missingParameter({ container: container, childrenWidth: childrenWidth });
         this.container = container;
-        this.containerWidth = this.container.clientWidth;
         this.childrenWidth = childrenWidth;
-        this.centerChildren = Boolean(centerChildren);
+        this.margin = margin || 'center';
         this.columnsHeight = [];
         this.childrenHeights = {};
         this.childLastId = 0;
@@ -15,14 +14,16 @@ var ReflowGrid = /** @class */ (function () {
         this.resizeDebounceInMs = resizeDebounceInMs || 100;
         this.containerClassName = 'rg-container';
         this.childrenStyleTransition = childrenStyleTransition || 'transform ease-in 0.2s';
-        this.container.classList.add(this.containerClassName);
-        this.children = Array.from(container.childNodes);
-        this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
+        // we have to apply styles to DOM before doing any calculation
         this.addStyleToDOM();
-        this.margin = this.calculateMargin();
+        this.children = Array.from(container.childNodes);
+        this.container.classList.add(this.containerClassName);
+        this.containerWidth = this.container.clientWidth;
+        this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
         this.setChildrenWidth();
         this.setChildrenHeight();
         this.listenToResize();
+        this.marginWidth = this.calculateMargin();
         this.addMutationObserverToContainer();
         this.addMutationObserverToChildren();
         this.reflow();
@@ -42,11 +43,14 @@ var ReflowGrid = /** @class */ (function () {
         }
     };
     ReflowGrid.prototype.calculateMargin = function () {
-        if (!this.centerChildren)
+        if (this.margin === 'right')
             return 0;
         if (this.columnsCount <= 1)
             return 0;
-        return Math.floor((this.containerWidth - this.columnsCount * this.childrenWidth) / 2);
+        var remainingSpace = this.containerWidth - this.columnsCount * this.childrenWidth;
+        if (this.margin === 'left')
+            return remainingSpace;
+        return Math.floor(remainingSpace / 2);
     };
     ReflowGrid.prototype.debounce = function (callback, wait) {
         var interval;
@@ -132,12 +136,12 @@ var ReflowGrid = /** @class */ (function () {
         this.resetColumnsHeight();
         this.children.forEach(function (child, index) {
             var column = index;
-            var transform = "translate(" + (column * _this.childrenWidth + _this.margin) + "px, 0px)";
+            var transform = "translate(" + (column * _this.childrenWidth + _this.marginWidth) + "px, 0px)";
             if ((column + 1) * _this.childrenWidth >= _this.containerWidth) {
                 var lowerColumn = _this.getLowerColumn();
                 column = lowerColumn.index;
                 var x = column * _this.childrenWidth;
-                transform = "translate(" + (_this.margin + x) + "px, " + lowerColumn.height + "px)";
+                transform = "translate(" + (_this.marginWidth + x) + "px, " + lowerColumn.height + "px)";
             }
             _this.columnsHeight[column] = Number.isInteger(_this.columnsHeight[column])
                 ? _this.columnsHeight[column] + child.offsetHeight
@@ -151,7 +155,7 @@ var ReflowGrid = /** @class */ (function () {
     ReflowGrid.prototype.resize = function (containerWidth) {
         this.containerWidth = containerWidth;
         this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
-        this.margin = this.calculateMargin();
+        this.marginWidth = this.calculateMargin();
         this.resetColumnsHeight();
         this.reflow();
     };
