@@ -4,7 +4,7 @@
 interface ReflowGridParameters {
   container: HTMLElement;
   enableResize: boolean;
-  margin: 'auto' | 'left' | 'right';
+  margin: 'center' | 'left' | 'right';
   resizeDebounceInMs: number;
   childrenWidth: number;
   childrenStyleTransition: string;
