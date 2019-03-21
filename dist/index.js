@@ -2,7 +2,7 @@
 // TODO: cleanup
 var ReflowGrid = /** @class */ (function () {
     function ReflowGrid(_a) {
-        var container = _a.container, childrenWidth = _a.childrenWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, centerChildren = _a.centerChildren;
+        var container = _a.container, childrenWidth = _a.childrenWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, centerChildren = _a.centerChildren, childrenStyleTransition = _a.childrenStyleTransition;
         this.missingParameter({ container: container, childrenWidth: childrenWidth });
         this.container = container;
         this.containerWidth = this.container.clientWidth;
@@ -14,6 +14,7 @@ var ReflowGrid = /** @class */ (function () {
         this.enableResize = enableResize || false;
         this.resizeDebounceInMs = resizeDebounceInMs || 100;
         this.containerClassName = 'rg-container';
+        this.childrenStyleTransition = childrenStyleTransition || 'transform ease-in 0.2s';
         this.container.classList.add(this.containerClassName);
         this.children = Array.from(container.childNodes);
         this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
@@ -80,7 +81,7 @@ var ReflowGrid = /** @class */ (function () {
         var head = document.querySelector('head');
         if (head) {
             var style = document.createElement('style');
-            var css = document.createTextNode("\n/* reflow grid */\n." + this.containerClassName + "{\n  box-sizing:content-box;\n}\n." + this.containerClassName + ">*{\n  box-sizing:border-box;\n  position:absolute;\n  transition:transform ease-in 0.2s;\n}\n");
+            var css = document.createTextNode("\n/* reflow grid */\n." + this.containerClassName + "{\n  box-sizing:content-box;\n}\n." + this.containerClassName + ">*{\n  box-sizing:border-box;\n  position:absolute;\n  transition:" + this.childrenStyleTransition + ";\n}\n");
             style.appendChild(css);
             head.appendChild(style);
         }

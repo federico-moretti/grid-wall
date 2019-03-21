@@ -7,6 +7,7 @@ interface ReflowGridParameters {
   centerChildren: boolean;
   resizeDebounceInMs: number;
   childrenWidth: number;
+  childrenStyleTransition: string;
 }
 
 export default class ReflowGrid {
@@ -16,6 +17,7 @@ export default class ReflowGrid {
   children: HTMLElement[];
   childrenHeights: { [name: string]: number };
   childrenWidth: number;
+  childrenStyleTransition: string;
   centerChildren: boolean;
   margin: number;
   containerWidth: number;
@@ -30,6 +32,7 @@ export default class ReflowGrid {
     enableResize,
     resizeDebounceInMs,
     centerChildren,
+    childrenStyleTransition,
   }: ReflowGridParameters) {
     this.missingParameter({ container, childrenWidth });
 
@@ -43,6 +46,7 @@ export default class ReflowGrid {
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
     this.containerClassName = 'rg-container';
+    this.childrenStyleTransition = childrenStyleTransition || 'transform ease-in 0.2s';
 
     this.container.classList.add(this.containerClassName);
     this.children = Array.from(container.childNodes) as HTMLElement[];
@@ -126,7 +130,7 @@ export default class ReflowGrid {
 .${this.containerClassName}>*{
   box-sizing:border-box;
   position:absolute;
-  transition:transform ease-in 0.2s;
+  transition:${this.childrenStyleTransition};
 }
 `);
       style.appendChild(css);
