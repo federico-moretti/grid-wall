@@ -1,5 +1,7 @@
+"use strict";
 // TODO: test with React
 // TODO: cleanup
+Object.defineProperty(exports, "__esModule", { value: true });
 var ReflowGrid = /** @class */ (function () {
     function ReflowGrid(_a) {
         var container = _a.container, childrenWidth = _a.childrenWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, margin = _a.margin, childrenStyleTransition = _a.childrenStyleTransition;
@@ -16,7 +18,7 @@ var ReflowGrid = /** @class */ (function () {
         this.childrenStyleTransition = childrenStyleTransition || 'transform ease-in 0.2s';
         // we have to apply styles to DOM before doing any calculation
         this.addStyleToDOM();
-        this.children = Array.from(container.childNodes);
+        this.children = this.getChildren();
         this.container.classList.add(this.containerClassName);
         this.containerWidth = this.container.clientWidth;
         this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
@@ -85,13 +87,32 @@ var ReflowGrid = /** @class */ (function () {
         var head = document.querySelector('head');
         if (head) {
             var style = document.createElement('style');
-            var css = document.createTextNode("\n/* reflow grid */\n." + this.containerClassName + "{\n  box-sizing:content-box;\n}\n." + this.containerClassName + ">*{\n  box-sizing:border-box;\n  position:absolute;\n  transition:" + this.childrenStyleTransition + ";\n}\n");
+            var css = document.createTextNode("/* reflow grid */" +
+                ("." + this.containerClassName + "{") +
+                "  box-sizing:content-box;" +
+                "}" +
+                ("." + this.containerClassName + ">*{") +
+                "  box-sizing:border-box;" +
+                "  position:absolute;" +
+                ("  transition:" + this.childrenStyleTransition + ";") +
+                "}");
             style.appendChild(css);
             head.appendChild(style);
         }
     };
     ReflowGrid.prototype.setWidth = function (element, width) {
         element.style.width = width + "px";
+    };
+    ReflowGrid.prototype.getChildren = function () {
+        var children = [];
+        if (this.container.children.length > 0) {
+            Array.from(this.container.children).forEach(function (child) {
+                if (child instanceof HTMLElement) {
+                    children.push(child);
+                }
+            });
+        }
+        return children;
     };
     ReflowGrid.prototype.setChildrenWidth = function () {
         var _this = this;
@@ -179,11 +200,11 @@ var ReflowGrid = /** @class */ (function () {
                     if (child instanceof HTMLElement)
                         _this.setWidth(child, _this.childrenWidth);
                 });
-                _this.children = Array.from(_this.container.children);
+                _this.children = _this.getChildren();
                 _this.reflow();
             }
         });
     };
     return ReflowGrid;
 }());
-export default ReflowGrid;
+exports.default = ReflowGrid;

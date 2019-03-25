@@ -1,10 +1,10 @@
 interface ReflowGridParameters {
     container: HTMLElement;
-    enableResize: boolean;
-    margin: 'center' | 'left' | 'right';
-    resizeDebounceInMs: number;
     childrenWidth: number;
-    childrenStyleTransition: string;
+    enableResize?: boolean;
+    margin?: 'center' | 'left' | 'right';
+    resizeDebounceInMs?: number;
+    childrenStyleTransition?: string;
 }
 export default class ReflowGrid {
     container: HTMLElement;
@@ -34,6 +34,7 @@ export default class ReflowGrid {
     resetColumnsHeight(): void;
     addStyleToDOM(): void;
     setWidth(element: HTMLElement, width: number): void;
+    getChildren(): HTMLElement[];
     setChildrenWidth(): void;
     addMutationObserverToContainer(): void;
     addMutationObserverToChildren(): void;

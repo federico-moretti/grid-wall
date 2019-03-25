@@ -3,11 +3,11 @@
 
 interface ReflowGridParameters {
   container: HTMLElement;
-  enableResize: boolean;
-  margin: 'center' | 'left' | 'right';
-  resizeDebounceInMs: number;
   childrenWidth: number;
-  childrenStyleTransition: string;
+  enableResize?: boolean;
+  margin?: 'center' | 'left' | 'right';
+  resizeDebounceInMs?: number;
+  childrenStyleTransition?: string;
 }
 
 export default class ReflowGrid {
@@ -50,7 +50,7 @@ export default class ReflowGrid {
     // we have to apply styles to DOM before doing any calculation
     this.addStyleToDOM();
 
-    this.children = Array.from(container.childNodes) as HTMLElement[];
+    this.children = this.getChildren();
     this.container.classList.add(this.containerClassName);
     this.containerWidth = this.container.clientWidth;
     this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
@@ -126,17 +126,17 @@ export default class ReflowGrid {
     const head = document.querySelector('head');
     if (head) {
       const style = document.createElement('style');
-      const css = document.createTextNode(`
-/* reflow grid */
-.${this.containerClassName}{
-  box-sizing:content-box;
-}
-.${this.containerClassName}>*{
-  box-sizing:border-box;
-  position:absolute;
-  transition:${this.childrenStyleTransition};
-}
-`);
+      const css = document.createTextNode(
+        `/* reflow grid */` +
+          `.${this.containerClassName}{` +
+          `  box-sizing:content-box;` +
+          `}` +
+          `.${this.containerClassName}>*{` +
+          `  box-sizing:border-box;` +
+          `  position:absolute;` +
+          `  transition:${this.childrenStyleTransition};` +
+          `}`
+      );
       style.appendChild(css);
       head.appendChild(style);
     }
@@ -146,10 +146,22 @@ export default class ReflowGrid {
     element.style.width = `${width}px`;
   }
 
+  getChildren(): HTMLElement[] {
+    let children: HTMLElement[] = [];
+    if (this.container.children.length > 0) {
+      Array.from(this.container.children).forEach(child => {
+        if (child instanceof HTMLElement) {
+          children.push(child);
+        }
+      });
+    }
+    return children;
+  }
+
   setChildrenWidth(): void {
     if (this.children.length > 0) {
       this.children.forEach(child => {
-        this.setWidth(<HTMLElement>child, this.childrenWidth);
+        this.setWidth(child, this.childrenWidth);
       });
     }
   }
@@ -235,8 +247,7 @@ export default class ReflowGrid {
         mutation.addedNodes.forEach(child => {
           if (child instanceof HTMLElement) this.setWidth(child, this.childrenWidth);
         });
-        this.children = Array.from(this.container.children) as HTMLElement[];
-
+        this.children = this.getChildren();
         this.reflow();
       }
     });
