@@ -18,10 +18,10 @@
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var ReflowGrid = /** @class */ (function () {
 	    function ReflowGrid(_a) {
-	        var container = _a.container, childrenWidth = _a.childrenWidth, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, margin = _a.margin, childrenStyleTransition = _a.childrenStyleTransition;
-	        this.missingParameter({ container: container, childrenWidth: childrenWidth });
+	        var container = _a.container, childrenWidthInPx = _a.childrenWidthInPx, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, margin = _a.margin, childrenStyleTransition = _a.childrenStyleTransition;
+	        this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
 	        this.container = container;
-	        this.childrenWidth = childrenWidth;
+	        this.childrenWidth = childrenWidthInPx;
 	        this.margin = margin || 'center';
 	        this.columnsHeight = [];
 	        this.childrenHeights = {};
@@ -114,7 +114,7 @@
 	            head.appendChild(style);
 	        }
 	    };
-	    ReflowGrid.prototype.setWidth = function (element, width) {
+	    ReflowGrid.setWidth = function (element, width) {
 	        element.style.width = width + "px";
 	    };
 	    ReflowGrid.prototype.getChildren = function () {
@@ -132,7 +132,7 @@
 	        var _this = this;
 	        if (this.children.length > 0) {
 	            this.children.forEach(function (child) {
-	                _this.setWidth(child, _this.childrenWidth);
+	                ReflowGrid.setWidth(child, _this.childrenWidth);
 	            });
 	        }
 	    };
@@ -162,9 +162,8 @@
 	        }
 	        return lower;
 	    };
-	    ReflowGrid.prototype.getMaxHeight = function () {
-	        var heights = Object.values(this.columnsHeight);
-	        return Math.max.apply(Math, heights);
+	    ReflowGrid.getMaxHeight = function (columnsHeight) {
+	        return Math.max.apply(Math, columnsHeight);
 	    };
 	    ReflowGrid.prototype.reflow = function () {
 	        var _this = this;
@@ -184,11 +183,12 @@
 	            if (child.style.transform !== transform)
 	                child.style.transform = transform;
 	        });
-	        this.container.style.height = this.getMaxHeight() + 'px';
+	        this.container.style.height = ReflowGrid.getMaxHeight(this.columnsHeight) + 'px';
 	        this.setChildrenHeight();
 	    };
-	    ReflowGrid.prototype.resize = function (containerWidth) {
-	        this.containerWidth = containerWidth;
+	    ReflowGrid.prototype.resize = function (containerWidthInPx) {
+	        // TODO: should throw error if missing width
+	        this.containerWidth = containerWidthInPx;
 	        this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
 	        this.marginWidth = this.calculateMargin();
 	        this.resetColumnsHeight();
@@ -212,7 +212,7 @@
 	            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
 	                mutation.addedNodes.forEach(function (child) {
 	                    if (child instanceof HTMLElement)
-	                        _this.setWidth(child, _this.childrenWidth);
+	                        ReflowGrid.setWidth(child, _this.childrenWidth);
 	                });
 	                _this.children = _this.getChildren();
 	                _this.reflow();

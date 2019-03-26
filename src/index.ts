@@ -3,7 +3,7 @@
 
 interface ReflowGridParameters {
   container: HTMLElement;
-  childrenWidth: number;
+  childrenWidthInPx: number;
   enableResize?: boolean;
   margin?: 'center' | 'left' | 'right';
   resizeDebounceInMs?: number;
@@ -28,16 +28,16 @@ export default class ReflowGrid {
 
   constructor({
     container,
-    childrenWidth,
+    childrenWidthInPx,
     enableResize,
     resizeDebounceInMs,
     margin,
     childrenStyleTransition,
   }: ReflowGridParameters) {
-    this.missingParameter({ container, childrenWidth });
+    this.missingParameter({ container, childrenWidthInPx });
 
     this.container = container;
-    this.childrenWidth = childrenWidth;
+    this.childrenWidth = childrenWidthInPx;
     this.margin = margin || 'center';
     this.columnsHeight = [];
     this.childrenHeights = {};
@@ -142,7 +142,7 @@ export default class ReflowGrid {
     }
   }
 
-  setWidth(element: HTMLElement, width: number): void {
+  static setWidth(element: HTMLElement, width: number): void {
     element.style.width = `${width}px`;
   }
 
@@ -161,7 +161,7 @@ export default class ReflowGrid {
   setChildrenWidth(): void {
     if (this.children.length > 0) {
       this.children.forEach(child => {
-        this.setWidth(child, this.childrenWidth);
+        ReflowGrid.setWidth(child, this.childrenWidth);
       });
     }
   }
@@ -193,9 +193,8 @@ export default class ReflowGrid {
     return lower;
   }
 
-  getMaxHeight(): number {
-    const heights = Object.values(this.columnsHeight);
-    return Math.max(...heights);
+  static getMaxHeight(columnsHeight: number[]): number {
+    return Math.max(...columnsHeight);
   }
 
   reflow(): void {
@@ -216,12 +215,13 @@ export default class ReflowGrid {
         : child.offsetHeight;
       if (child.style.transform !== transform) child.style.transform = transform;
     });
-    this.container.style.height = this.getMaxHeight() + 'px';
+    this.container.style.height = ReflowGrid.getMaxHeight(this.columnsHeight) + 'px';
     this.setChildrenHeight();
   }
 
-  resize(containerWidth: number): void {
-    this.containerWidth = containerWidth;
+  resize(containerWidthInPx: number): void {
+    // TODO: should throw error if missing width
+    this.containerWidth = containerWidthInPx;
     this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
     this.marginWidth = this.calculateMargin();
     this.resetColumnsHeight();
@@ -245,7 +245,7 @@ export default class ReflowGrid {
     mutations.forEach(mutation => {
       if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
         mutation.addedNodes.forEach(child => {
-          if (child instanceof HTMLElement) this.setWidth(child, this.childrenWidth);
+          if (child instanceof HTMLElement) ReflowGrid.setWidth(child, this.childrenWidth);
         });
         this.children = this.getChildren();
         this.reflow();

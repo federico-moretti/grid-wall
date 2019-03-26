@@ -9,6 +9,7 @@
     "browser": "concurrently \"tsc -w\" ",
     "build:umd": "rollup --config",
     "build": "yarn tsc && yarn build:umd",
+    "w:build": "concurrently \"yarn w:tsc\" \"yarn w:rollup\"",
     "w:tsc": "tsc -w",
     "w:browser": "browser-sync start --server --index 'example/index.html' --files 'umd/index.js' 'example/index.html'",
     "w:rollup": "rollup --watch --config",
