@@ -1,6 +1,6 @@
 interface ReflowGridParameters {
     container: HTMLElement;
-    childrenWidth: number;
+    childrenWidthInPx: number;
     enableResize?: boolean;
     margin?: 'center' | 'left' | 'right';
     resizeDebounceInMs?: number;
@@ -23,7 +23,7 @@ export default class ReflowGrid {
     columnsHeight: number[];
     childLastId: number;
     containerClassName: string;
-    constructor({ container, childrenWidth, enableResize, resizeDebounceInMs, margin, childrenStyleTransition, }: ReflowGridParameters);
+    constructor(params: ReflowGridParameters);
     missingParameter(params: {
         [name: string]: any;
     }): void;
@@ -33,7 +33,7 @@ export default class ReflowGrid {
     setChildrenHeight(): void;
     resetColumnsHeight(): void;
     addStyleToDOM(): void;
-    setWidth(element: HTMLElement, width: number): void;
+    static setWidth(element: HTMLElement, width: number): void;
     getChildren(): HTMLElement[];
     setChildrenWidth(): void;
     addMutationObserverToContainer(): void;
@@ -42,10 +42,10 @@ export default class ReflowGrid {
         index: number;
         height: number;
     };
-    getMaxHeight(): number;
+    static getMaxHeight(columnsHeight: number[]): number;
     reflow(): void;
-    resize(containerWidth: number): void;
-    handleChildrenMutation(mutations: MutationRecord[]): void;
-    handleContainerMutation(mutations: MutationRecord[]): void;
+    resize(containerWidthInPx: number): void;
+    handleChildrenMutation(mutations: MutationRecord[], callback?: () => void): void;
+    handleContainerMutation(mutations: MutationRecord[], callback?: () => void): void;
 }
 export {};

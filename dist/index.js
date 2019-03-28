@@ -3,8 +3,10 @@
 // TODO: cleanup
 Object.defineProperty(exports, "__esModule", { value: true });
 var ReflowGrid = /** @class */ (function () {
-    function ReflowGrid(_a) {
-        var container = _a.container, childrenWidthInPx = _a.childrenWidthInPx, enableResize = _a.enableResize, resizeDebounceInMs = _a.resizeDebounceInMs, margin = _a.margin, childrenStyleTransition = _a.childrenStyleTransition;
+    function ReflowGrid(params) {
+        if (!params)
+            throw new Error('Missing mandatory parameters!');
+        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, childrenStyleTransition = params.childrenStyleTransition;
         this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
         this.container = container;
         this.childrenWidth = childrenWidthInPx;
@@ -39,7 +41,7 @@ var ReflowGrid = /** @class */ (function () {
         });
         if (missingParams.length > 0) {
             var parameter = "parameter" + (missingParams.length > 1 ? 's' : '');
-            var message_1 = "Missing " + missingParams.length + " " + parameter + ":";
+            var message_1 = "Missing " + missingParams.length + " mandatory " + parameter + ":";
             missingParams.forEach(function (name) { return (message_1 += "\n  " + name); });
             throw new Error(message_1);
         }
@@ -49,7 +51,8 @@ var ReflowGrid = /** @class */ (function () {
             return 0;
         if (this.columnsCount <= 1)
             return 0;
-        var remainingSpace = this.containerWidth - this.columnsCount * this.childrenWidth;
+        var count = this.children.length > this.columnsCount ? this.columnsCount : this.children.length;
+        var remainingSpace = this.containerWidth - count * this.childrenWidth;
         if (this.margin === 'left')
             return remainingSpace;
         return Math.floor(remainingSpace / 2);
@@ -140,7 +143,7 @@ var ReflowGrid = /** @class */ (function () {
         var lower = { index: 0, height: 0 };
         if (this.columnsHeight.length > 0) {
             this.columnsHeight.forEach(function (height, index) {
-                if (lower.height === 0 || lower.height >= height) {
+                if (lower.height === 0 || lower.height > height) {
                     lower.height = height;
                     lower.index = index;
                 }
@@ -173,26 +176,30 @@ var ReflowGrid = /** @class */ (function () {
         this.setChildrenHeight();
     };
     ReflowGrid.prototype.resize = function (containerWidthInPx) {
-        // TODO: should throw error if missing width
+        if (!containerWidthInPx && !Number.isNaN(containerWidthInPx)) {
+            throw new Error('Width must be a number and more than 0');
+        }
         this.containerWidth = containerWidthInPx;
         this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
         this.marginWidth = this.calculateMargin();
-        this.resetColumnsHeight();
         this.reflow();
     };
-    ReflowGrid.prototype.handleChildrenMutation = function (mutations) {
+    ReflowGrid.prototype.handleChildrenMutation = function (mutations, callback) {
         var _this = this;
         mutations.forEach(function (mutation) {
             var elem = mutation.target;
             var id = elem.getAttribute('data-rg-id');
             if (id) {
                 var storedHeight = _this.childrenHeights[id];
-                if (storedHeight !== elem.offsetHeight)
+                if (storedHeight !== elem.offsetHeight) {
                     _this.reflow();
+                }
             }
         });
+        if (callback && typeof callback === 'function')
+            callback();
     };
-    ReflowGrid.prototype.handleContainerMutation = function (mutations) {
+    ReflowGrid.prototype.handleContainerMutation = function (mutations, callback) {
         var _this = this;
         mutations.forEach(function (mutation) {
             if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
@@ -204,6 +211,8 @@ var ReflowGrid = /** @class */ (function () {
                 _this.reflow();
             }
         });
+        if (callback && typeof callback === 'function')
+            callback();
     };
     return ReflowGrid;
 }());

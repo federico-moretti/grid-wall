@@ -13,7 +13,8 @@
     "w:tsc": "tsc -w",
     "w:browser": "browser-sync start --server --index 'example/index.html' --files 'umd/index.js' 'example/index.html'",
     "w:rollup": "rollup --watch --config",
-    "test": "jest --watchAll"
+    "w:test": "jest --watchAll",
+    "test": "jest"
   },
   "devDependencies": {
     "@babel/core": "^7.4.0",
