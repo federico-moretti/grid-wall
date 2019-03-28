@@ -26,14 +26,16 @@ export default class ReflowGrid {
   childLastId: number;
   containerClassName: string;
 
-  constructor({
-    container,
-    childrenWidthInPx,
-    enableResize,
-    resizeDebounceInMs,
-    margin,
-    childrenStyleTransition,
-  }: ReflowGridParameters) {
+  constructor(params: ReflowGridParameters) {
+    if (!params) throw new Error('Missing mandatory parameters!');
+    const {
+      container,
+      childrenWidthInPx,
+      enableResize,
+      resizeDebounceInMs,
+      margin,
+      childrenStyleTransition,
+    } = params;
     this.missingParameter({ container, childrenWidthInPx });
 
     this.container = container;
@@ -73,7 +75,7 @@ export default class ReflowGrid {
 
     if (missingParams.length > 0) {
       let parameter = `parameter${missingParams.length > 1 ? 's' : ''}`;
-      let message = `Missing ${missingParams.length} ${parameter}:`;
+      let message = `Missing ${missingParams.length} mandatory ${parameter}:`;
       missingParams.forEach(name => (message += `\n  ${name}`));
 
       throw new Error(message);
@@ -83,7 +85,9 @@ export default class ReflowGrid {
   calculateMargin(): number {
     if (this.margin === 'right') return 0;
     if (this.columnsCount <= 1) return 0;
-    const remainingSpace = this.containerWidth - this.columnsCount * this.childrenWidth;
+    const count =
+      this.children.length > this.columnsCount ? this.columnsCount : this.children.length;
+    const remainingSpace = this.containerWidth - count * this.childrenWidth;
     if (this.margin === 'left') return remainingSpace;
     return Math.floor(remainingSpace / 2);
   }
@@ -184,7 +188,7 @@ export default class ReflowGrid {
     const lower = { index: 0, height: 0 };
     if (this.columnsHeight.length > 0) {
       this.columnsHeight.forEach((height, index) => {
-        if (lower.height === 0 || lower.height >= height) {
+        if (lower.height === 0 || lower.height > height) {
           lower.height = height;
           lower.index = index;
         }
@@ -220,28 +224,33 @@ export default class ReflowGrid {
   }
 
   resize(containerWidthInPx: number): void {
-    // TODO: should throw error if missing width
+    if (!containerWidthInPx && !Number.isNaN(containerWidthInPx)) {
+      throw new Error('Width must be a number and more than 0');
+    }
+
     this.containerWidth = containerWidthInPx;
     this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
     this.marginWidth = this.calculateMargin();
-    this.resetColumnsHeight();
-
     this.reflow();
   }
 
-  handleChildrenMutation(mutations: MutationRecord[]): void {
+  handleChildrenMutation(mutations: MutationRecord[], callback?: () => void): void {
     mutations.forEach(mutation => {
       const elem = mutation.target as HTMLElement;
       const id = elem.getAttribute('data-rg-id');
 
       if (id) {
         const storedHeight = this.childrenHeights[id];
-        if (storedHeight !== elem.offsetHeight) this.reflow();
+        if (storedHeight !== elem.offsetHeight) {
+          this.reflow();
+        }
       }
     });
+
+    if (callback && typeof callback === 'function') callback();
   }
 
-  handleContainerMutation(mutations: MutationRecord[]): void {
+  handleContainerMutation(mutations: MutationRecord[], callback?: () => void): void {
     mutations.forEach(mutation => {
       if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
         mutation.addedNodes.forEach(child => {
@@ -251,5 +260,7 @@ export default class ReflowGrid {
         this.reflow();
       }
     });
+
+    if (callback && typeof callback === 'function') callback();
   }
 }
