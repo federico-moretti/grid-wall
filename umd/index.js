@@ -20,7 +20,7 @@
 	    function ReflowGrid(params) {
 	        if (!params)
 	            throw new Error('Missing mandatory parameters!');
-	        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, childrenStyleTransition = params.childrenStyleTransition;
+	        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, childrenStyleTransition = params.childrenStyleTransition, animateTransform = params.animateTransform, animationTransform = params.animationTransform, _a = params.startCreateChildStyle, startCreateChildStyle = _a === void 0 ? {} : _a, _b = params.endCreateChildStyle, endCreateChildStyle = _b === void 0 ? {} : _b;
 	        this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
 	        this.container = container;
 	        this.childrenWidth = childrenWidthInPx;
@@ -31,7 +31,9 @@
 	        this.enableResize = enableResize || false;
 	        this.resizeDebounceInMs = resizeDebounceInMs || 100;
 	        this.containerClassName = 'rg-container';
-	        this.childrenStyleTransition = childrenStyleTransition || 'transform ease-in 0.2s';
+	        this.childrenStyleTransition = childrenStyleTransition || 'none';
+	        this.startCreateChildStyle = startCreateChildStyle;
+	        this.endCreateChildStyle = endCreateChildStyle;
 	        // we have to apply styles to DOM before doing any calculation
 	        this.addStyleToDOM();
 	        this.children = this.getChildren();
@@ -45,6 +47,13 @@
 	        this.addMutationObserverToContainer();
 	        this.addMutationObserverToChildren();
 	        this.reflow();
+	        if (animateTransform) {
+	            var animation = "transform " + (animationTransform || 'ease-in 0.2s');
+	            this.childrenStyleTransition = this.childrenStyleTransition
+	                ? this.childrenStyleTransition + ", " + animation
+	                : animation;
+	            this.addStyleToDOM();
+	        }
 	    }
 	    ReflowGrid.prototype.missingParameter = function (params) {
 	        var missingParams = [];
@@ -104,11 +113,14 @@
 	        var head = document.querySelector('head');
 	        if (head) {
 	            var style = document.createElement('style');
+	            style.id = 'reflow-grid-style';
 	            var css = document.createTextNode("/* reflow grid */" +
 	                ("." + this.containerClassName + "{") +
 	                "  box-sizing:content-box;" +
 	                "}" +
-	                ("." + this.containerClassName + ">*{") +
+	                (
+	                // TODO: add a before and after class to handle animations
+	                "." + this.containerClassName + ">*{") +
 	                "  box-sizing:border-box;" +
 	                "  position:absolute;" +
 	                ("  transition:" + this.childrenStyleTransition + ";") +
@@ -119,6 +131,18 @@
 	    };
 	    ReflowGrid.setWidth = function (element, width) {
 	        element.style.width = width + "px";
+	    };
+	    ReflowGrid.addStyles = function (element, styles) {
+	        for (var property in styles) {
+	            if (element.style.hasOwnProperty(property)) {
+	                console.log(property, styles[property]);
+	                element.style[property] = styles[property];
+	            }
+	        }
+	        // debugger;
+	        // element.style.opacity = '1';
+	        // element.style.transition = 'opacity 0.2s ease-in, transform 0.2s ease-in';
+	        // console.log(element.style.transition);
 	    };
 	    ReflowGrid.prototype.getChildren = function () {
 	        var children = [];
@@ -170,7 +194,9 @@
 	    };
 	    ReflowGrid.prototype.reflow = function () {
 	        var _this = this;
+	        console.log('reflow');
 	        this.resetColumnsHeight();
+	        this.marginWidth = this.calculateMargin();
 	        this.children.forEach(function (child, index) {
 	            var column = index;
 	            var transform = "translate(" + (column * _this.childrenWidth + _this.marginWidth) + "px, 0px)";
@@ -183,6 +209,7 @@
 	            _this.columnsHeight[column] = Number.isInteger(_this.columnsHeight[column])
 	                ? _this.columnsHeight[column] + child.offsetHeight
 	                : child.offsetHeight;
+	            ReflowGrid.addStyles(child, _this.endCreateChildStyle);
 	            if (child.style.transform !== transform)
 	                child.style.transform = transform;
 	        });
@@ -195,7 +222,6 @@
 	        }
 	        this.containerWidth = containerWidthInPx;
 	        this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
-	        this.marginWidth = this.calculateMargin();
 	        this.reflow();
 	    };
 	    ReflowGrid.prototype.handleChildrenMutation = function (mutations, callback) {
@@ -216,10 +242,12 @@
 	    ReflowGrid.prototype.handleContainerMutation = function (mutations, callback) {
 	        var _this = this;
 	        mutations.forEach(function (mutation) {
-	            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+	            if (mutation.type === 'childList') {
 	                mutation.addedNodes.forEach(function (child) {
-	                    if (child instanceof HTMLElement)
+	                    if (child instanceof HTMLElement) {
+	                        ReflowGrid.addStyles(child, _this.startCreateChildStyle);
 	                        ReflowGrid.setWidth(child, _this.childrenWidth);
+	                    }
 	                });
 	                _this.children = _this.getChildren();
 	                _this.reflow();

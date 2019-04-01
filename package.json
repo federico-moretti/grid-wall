@@ -11,7 +11,7 @@
     "build": "yarn tsc && yarn build:umd",
     "w:build": "concurrently \"yarn w:tsc\" \"yarn w:rollup\"",
     "w:tsc": "tsc -w",
-    "w:browser": "browser-sync start --server --index 'example/index.html' --files 'umd/index.js' 'example/index.html'",
+    "w:browser": "browser-sync start --server --index 'examples/static/index.html' --files 'umd/index.js' 'examples/static/index.html'",
     "w:rollup": "rollup --watch --config",
     "w:test": "jest --watchAll",
     "test": "jest"
@@ -30,6 +30,6 @@
     "jsdom": "^14.0.0",
     "rollup": "^1.7.0",
     "rollup-plugin-commonjs": "^9.2.1",
-    "typescript": "^3.3.4000"
+    "typescript": "^3.4.0"
   }
 }

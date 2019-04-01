@@ -8,6 +8,9 @@ interface ReflowGridParameters {
   margin?: 'center' | 'left' | 'right';
   resizeDebounceInMs?: number;
   childrenStyleTransition?: string;
+  insertStyle?: CSSStyleDeclaration;
+  beforeStyle?: CSSStyleDeclaration;
+  afterStyle?: CSSStyleDeclaration;
 }
 
 export default class ReflowGrid {
@@ -25,6 +28,9 @@ export default class ReflowGrid {
   columnsHeight: number[];
   childLastId: number;
   containerClassName: string;
+  insertStyle: CSSStyleDeclaration;
+  beforeStyle: CSSStyleDeclaration;
+  afterStyle: CSSStyleDeclaration;
 
   constructor(params: ReflowGridParameters) {
     if (!params) throw new Error('Missing mandatory parameters!');
@@ -35,6 +41,9 @@ export default class ReflowGrid {
       resizeDebounceInMs,
       margin,
       childrenStyleTransition,
+      insertStyle = {} as CSSStyleDeclaration,
+      beforeStyle = {} as CSSStyleDeclaration,
+      afterStyle = {} as CSSStyleDeclaration,
     } = params;
     this.missingParameter({ container, childrenWidthInPx });
 
@@ -47,7 +56,10 @@ export default class ReflowGrid {
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
     this.containerClassName = 'rg-container';
-    this.childrenStyleTransition = childrenStyleTransition || 'transform ease-in 0.2s';
+    this.childrenStyleTransition = childrenStyleTransition || 'none';
+    this.insertStyle = insertStyle;
+    this.beforeStyle = beforeStyle;
+    this.afterStyle = afterStyle;
 
     // we have to apply styles to DOM before doing any calculation
     this.addStyleToDOM();
@@ -59,6 +71,7 @@ export default class ReflowGrid {
 
     this.setChildrenWidth();
     this.setChildrenHeight();
+    this.setInitialChildrenTransition();
     this.listenToResize();
     this.marginWidth = this.calculateMargin();
     this.addMutationObserverToContainer();
@@ -122,6 +135,12 @@ export default class ReflowGrid {
     });
   }
 
+  setInitialChildrenTransition(): void {
+    this.children.forEach(child => {
+      ReflowGrid.addStyles(child, this.insertStyle);
+    });
+  }
+
   resetColumnsHeight(): void {
     this.columnsHeight = [];
   }
@@ -130,6 +149,7 @@ export default class ReflowGrid {
     const head = document.querySelector('head');
     if (head) {
       const style = document.createElement('style');
+      style.id = 'reflow-grid-style';
       const css = document.createTextNode(
         `/* reflow grid */` +
           `.${this.containerClassName}{` +
@@ -138,7 +158,6 @@ export default class ReflowGrid {
           `.${this.containerClassName}>*{` +
           `  box-sizing:border-box;` +
           `  position:absolute;` +
-          `  transition:${this.childrenStyleTransition};` +
           `}`
       );
       style.appendChild(css);
@@ -148,6 +167,14 @@ export default class ReflowGrid {
 
   static setWidth(element: HTMLElement, width: number): void {
     element.style.width = `${width}px`;
+  }
+
+  static addStyles(element: HTMLElement, styles: CSSStyleDeclaration) {
+    for (let property in styles) {
+      if (element.style.hasOwnProperty(property)) {
+        element.style[property as any] = styles[property];
+      }
+    }
   }
 
   getChildren(): HTMLElement[] {
@@ -201,8 +228,17 @@ export default class ReflowGrid {
     return Math.max(...columnsHeight);
   }
 
+  addAfterStyle = (event: TransitionEvent) => {
+    if (event.target instanceof HTMLElement) {
+      ReflowGrid.addStyles(event.target, this.afterStyle);
+      event.target.setAttribute('data-rg-transition', 'true');
+      event.target.removeEventListener('transitionend', this.addAfterStyle, true);
+    }
+  };
+
   reflow(): void {
     this.resetColumnsHeight();
+    this.marginWidth = this.calculateMargin();
     this.children.forEach((child, index) => {
       let column = index;
       let transform = `translate(${column * this.childrenWidth + this.marginWidth}px, 0px)`;
@@ -217,6 +253,11 @@ export default class ReflowGrid {
       this.columnsHeight[column] = Number.isInteger(this.columnsHeight[column])
         ? this.columnsHeight[column] + child.offsetHeight
         : child.offsetHeight;
+
+      if (!child.getAttribute('data-rg-transition')) {
+        ReflowGrid.addStyles(child, this.beforeStyle);
+        child.addEventListener('transitionend', this.addAfterStyle, true);
+      }
       if (child.style.transform !== transform) child.style.transform = transform;
     });
     this.container.style.height = ReflowGrid.getMaxHeight(this.columnsHeight) + 'px';
@@ -230,7 +271,6 @@ export default class ReflowGrid {
 
     this.containerWidth = containerWidthInPx;
     this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
-    this.marginWidth = this.calculateMargin();
     this.reflow();
   }
 
@@ -252,9 +292,12 @@ export default class ReflowGrid {
 
   handleContainerMutation(mutations: MutationRecord[], callback?: () => void): void {
     mutations.forEach(mutation => {
-      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+      if (mutation.type === 'childList') {
         mutation.addedNodes.forEach(child => {
-          if (child instanceof HTMLElement) ReflowGrid.setWidth(child, this.childrenWidth);
+          if (child instanceof HTMLElement) {
+            ReflowGrid.addStyles(child, this.insertStyle);
+            ReflowGrid.setWidth(child, this.childrenWidth);
+          }
         });
         this.children = this.getChildren();
         this.reflow();

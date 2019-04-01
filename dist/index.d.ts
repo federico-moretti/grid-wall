@@ -5,6 +5,9 @@ interface ReflowGridParameters {
     margin?: 'center' | 'left' | 'right';
     resizeDebounceInMs?: number;
     childrenStyleTransition?: string;
+    insertStyle?: CSSStyleDeclaration;
+    beforeStyle?: CSSStyleDeclaration;
+    afterStyle?: CSSStyleDeclaration;
 }
 export default class ReflowGrid {
     container: HTMLElement;
@@ -23,6 +26,9 @@ export default class ReflowGrid {
     columnsHeight: number[];
     childLastId: number;
     containerClassName: string;
+    insertStyle: CSSStyleDeclaration;
+    beforeStyle: CSSStyleDeclaration;
+    afterStyle: CSSStyleDeclaration;
     constructor(params: ReflowGridParameters);
     missingParameter(params: {
         [name: string]: any;
@@ -31,9 +37,11 @@ export default class ReflowGrid {
     debounce(callback: () => void, wait: number): () => void;
     listenToResize(): void;
     setChildrenHeight(): void;
+    setInitialChildrenTransition(): void;
     resetColumnsHeight(): void;
     addStyleToDOM(): void;
     static setWidth(element: HTMLElement, width: number): void;
+    static addStyles(element: HTMLElement, styles: CSSStyleDeclaration): void;
     getChildren(): HTMLElement[];
     setChildrenWidth(): void;
     addMutationObserverToContainer(): void;
@@ -43,6 +51,7 @@ export default class ReflowGrid {
         height: number;
     };
     static getMaxHeight(columnsHeight: number[]): number;
+    addAfterStyle: (event: TransitionEvent) => void;
     reflow(): void;
     resize(containerWidthInPx: number): void;
     handleChildrenMutation(mutations: MutationRecord[], callback?: () => void): void;

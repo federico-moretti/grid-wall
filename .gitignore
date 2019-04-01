@@ -4,3 +4,5 @@ coverage
 yarn-error.log
 
 .vscode
+.cache
+examples/**/dist
