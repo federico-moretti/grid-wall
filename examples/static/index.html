@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Reflow Grid</title>
+    <style>
+      .grid {
+        flex: 1 0 auto;
+        /* width: 100%; */
+        background-color: #fefefe;
+        border: 1px solid #333;
+      }
+
+      .header {
+        text-align: center;
+        background-color: #54b298;
+        padding: 50px;
+        color: white;
+        margin-bottom: 20px;
+      }
+
+      .columns {
+        display: flex;
+        width: 100%;
+      }
+
+      .left_column {
+        min-width: 150px;
+        min-height: 50px;
+        background-color: #54b298;
+        color: white;
+      }
+
+      .item {
+        padding: 20px;
+        background-color: #546eb2;
+        border: 1px solid #4963a3;
+        color: #fefefe;
+        user-select: none;
+      }
+
+      .new_item {
+        padding: 20px;
+        background-color: #b2546e;
+        border: 1px solid #803a4d;
+        color: #fefefe;
+        user-select: none;
+      }
+
+      @media (max-width: 600px) {
+        .columns {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">Reflow Grid</div>
+    <div class="columns">
+      <div class="left_column">
+        <p>Sidebar</p>
+        <button onclick="addElement()">
+          Add element
+        </button>
+      </div>
+      <div class="grid"></div>
+    </div>
+    <hr />
+  </body>
+  <script src="../../umd/index.js"></script>
+  <script>
+    const grid = document.querySelector('.grid');
+    let items = [...Array(15)];
+    items.forEach((_, i) => {
+      const div = document.createElement('div');
+      div.textContent = 'Item ' + (i + 1);
+      div.classList.add('item');
+      div.style.height = Math.floor(Math.random() * (200 - 50) + 50) + 'px';
+      div.onclick = () => {
+        div.style.height = div.offsetHeight + 10 + 'px';
+      };
+      grid.appendChild(div);
+    });
+
+    const width = window.innerWidth;
+    const reflow = new ReflowGrid({
+      container: grid,
+      enableResize: true,
+      resizeDebounceInMs: 50,
+      childrenWidthInPx: 100,
+      margin: 'center',
+    });
+
+    function addElement() {
+      const parent = document.createElement('div');
+      const child = document.createElement('div');
+      const random = Math.floor(Math.random() * grid.children.length);
+      parent.appendChild(child);
+      child.textContent = `Pos ${random + 1}!`;
+      child.style.height = Math.floor(Math.random() * (200 - 50) + 50) + 'px';
+      child.classList.add('new_item');
+      parent.appendChild(child);
+      grid.insertBefore(parent, grid.children[random]);
+    }
+  </script>
+</html>
