@@ -7,7 +7,6 @@ interface ReflowGridParameters {
   enableResize?: boolean;
   margin?: 'center' | 'left' | 'right';
   resizeDebounceInMs?: number;
-  childrenStyleTransition?: string;
   insertStyle?: CSSStyleDeclaration;
   beforeStyle?: CSSStyleDeclaration;
   afterStyle?: CSSStyleDeclaration;
@@ -20,7 +19,6 @@ export default class ReflowGrid {
   children: HTMLElement[];
   childrenHeights: { [name: string]: number };
   childrenWidth: number;
-  childrenStyleTransition: string;
   margin: 'center' | 'left' | 'right';
   marginWidth: number;
   containerWidth: number;
@@ -40,7 +38,6 @@ export default class ReflowGrid {
       enableResize,
       resizeDebounceInMs,
       margin,
-      childrenStyleTransition,
       insertStyle = {} as CSSStyleDeclaration,
       beforeStyle = {} as CSSStyleDeclaration,
       afterStyle = {} as CSSStyleDeclaration,
@@ -56,7 +53,6 @@ export default class ReflowGrid {
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
     this.containerClassName = 'rg-container';
-    this.childrenStyleTransition = childrenStyleTransition || 'none';
     this.insertStyle = insertStyle;
     this.beforeStyle = beforeStyle;
     this.afterStyle = afterStyle;
