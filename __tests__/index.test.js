@@ -4,9 +4,9 @@ const ReflowGrid = require('../dist/index').default;
 const id = 'rg';
 let rg = null;
 
-function createContainerWithFiveChildren({ margin = 'center' } = {}) {
+function createContainerWithFiveChildren({ width = '500px', margin = 'center' } = {}) {
   document.body.innerHTML = `
-  <div id="${id}" style="width: 500px;">
+  <div id="${id}" style="width: ${width};">
     <div id="i1" style="height:200px;">Item 1</div>
     <div id="i2" style="height:100px;">Item 2</div>
     <div id="i3" style="height:300px;">Item 3</div>
@@ -26,6 +26,8 @@ function createContainerWithNoChildren() {
     rg = new ReflowGrid({ container, childrenWidthInPx: 100 });
   }
 }
+
+jest.useFakeTimers();
 
 describe('Reflow Grid', () => {
   beforeEach(() => {
@@ -146,7 +148,13 @@ describe('Reflow Grid', () => {
     expect(rg.marginWidth).toBe(0);
   });
 
-  it.todo('should reflow');
+  it('should calculate margin with no columns', () => {
+    createContainerWithFiveChildren({ width: '50px' });
+    expect(rg.marginWidth).toBe(0);
+    expect(rg.columnsCount).toBe(0);
+  });
+
+  it.todo('should test reflow deeply');
 
   it('should resize', () => {
     createContainerWithFiveChildren();
@@ -250,9 +258,48 @@ describe('Reflow Grid', () => {
     }
   });
 
-  it.todo('should debounce');
+  it('should debounce', () => {
+    const callback = jest.fn();
 
-  it.todo('should add styles');
+    ReflowGrid.debounce(callback, 200)();
+    jest.runAllTimers();
 
-  it.todo('should insert transitions');
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('should add styles', () => {
+    // mock html element cause jsdom mess up the styles property
+    const element = {
+      style: {
+        width: '10px',
+        transition: 'none',
+      },
+    };
+
+    ReflowGrid.addStyles(element, {
+      width: '100px',
+      transition: 'opacity 0.2s ease-in, transform 0.2s ease-in',
+    });
+
+    expect(element.style.width).toBe('100px');
+    expect(element.style.transition).toBe('opacity 0.2s ease-in, transform 0.2s ease-in');
+  });
+
+  it('should insert transitions in reflow', () => {
+    createContainerWithFiveChildren();
+
+    const spyAddStyles = jest.spyOn(ReflowGrid, 'addStyles');
+    rg.reflow();
+
+    expect(spyAddStyles).toHaveBeenCalledTimes(5);
+  });
+
+  it('should add transition data attribute', () => {
+    createContainerWithFiveChildren();
+    const element = document.createElement('div');
+
+    rg.addAfterStyle({ target: element });
+
+    expect(element.getAttribute('data-rg-transition')).toBe('true');
+  });
 });

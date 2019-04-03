@@ -101,7 +101,7 @@ export default class ReflowGrid {
     return Math.floor(remainingSpace / 2);
   }
 
-  debounce(callback: () => void, wait: number): () => void {
+  static debounce(callback: () => void, wait: number): () => void {
     let interval: NodeJS.Timeout;
     return () => {
       clearTimeout(interval);
@@ -114,7 +114,7 @@ export default class ReflowGrid {
       const wait = this.resizeDebounceInMs;
       window.addEventListener(
         'resize',
-        this.debounce(() => this.resize(this.container.clientWidth), wait)
+        ReflowGrid.debounce(() => this.resize(this.container.clientWidth), wait)
       );
     }
   }

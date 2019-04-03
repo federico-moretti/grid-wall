@@ -14,7 +14,7 @@ var ReflowGrid = /** @class */ (function () {
         };
         if (!params)
             throw new Error('Missing mandatory parameters!');
-        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, childrenStyleTransition = params.childrenStyleTransition, _a = params.insertStyle, insertStyle = _a === void 0 ? {} : _a, _b = params.beforeStyle, beforeStyle = _b === void 0 ? {} : _b, _c = params.afterStyle, afterStyle = _c === void 0 ? {} : _c;
+        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, _a = params.insertStyle, insertStyle = _a === void 0 ? {} : _a, _b = params.beforeStyle, beforeStyle = _b === void 0 ? {} : _b, _c = params.afterStyle, afterStyle = _c === void 0 ? {} : _c;
         this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
         this.container = container;
         this.childrenWidth = childrenWidthInPx;
@@ -25,7 +25,6 @@ var ReflowGrid = /** @class */ (function () {
         this.enableResize = enableResize || false;
         this.resizeDebounceInMs = resizeDebounceInMs || 100;
         this.containerClassName = 'rg-container';
-        this.childrenStyleTransition = childrenStyleTransition || 'none';
         this.insertStyle = insertStyle;
         this.beforeStyle = beforeStyle;
         this.afterStyle = afterStyle;
@@ -69,7 +68,7 @@ var ReflowGrid = /** @class */ (function () {
             return remainingSpace;
         return Math.floor(remainingSpace / 2);
     };
-    ReflowGrid.prototype.debounce = function (callback, wait) {
+    ReflowGrid.debounce = function (callback, wait) {
         var interval;
         return function () {
             clearTimeout(interval);
@@ -80,7 +79,7 @@ var ReflowGrid = /** @class */ (function () {
         var _this = this;
         if (this.enableResize) {
             var wait = this.resizeDebounceInMs;
-            window.addEventListener('resize', this.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
+            window.addEventListener('resize', ReflowGrid.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
         }
     };
     ReflowGrid.prototype.setChildrenHeight = function () {

@@ -4,7 +4,6 @@ interface ReflowGridParameters {
     enableResize?: boolean;
     margin?: 'center' | 'left' | 'right';
     resizeDebounceInMs?: number;
-    childrenStyleTransition?: string;
     insertStyle?: CSSStyleDeclaration;
     beforeStyle?: CSSStyleDeclaration;
     afterStyle?: CSSStyleDeclaration;
@@ -18,7 +17,6 @@ export default class ReflowGrid {
         [name: string]: number;
     };
     childrenWidth: number;
-    childrenStyleTransition: string;
     margin: 'center' | 'left' | 'right';
     marginWidth: number;
     containerWidth: number;
@@ -34,7 +32,7 @@ export default class ReflowGrid {
         [name: string]: any;
     }): void;
     calculateMargin(): number;
-    debounce(callback: () => void, wait: number): () => void;
+    static debounce(callback: () => void, wait: number): () => void;
     listenToResize(): void;
     setChildrenHeight(): void;
     setInitialChildrenTransition(): void;
