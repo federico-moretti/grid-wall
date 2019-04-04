@@ -57,7 +57,11 @@ Initialize the module.
 | beforeStyle           | CSSStyleDeclaration     | style of a child before the first reflow                  |
 | afterStyle            | CSSStyleDeclaration     | style of a child after the first reflow                   |
 
-#### `insertStyle`, `beforeStyle` and `afterStyle`
+#### `resize(containerWidthInPx: number): void`
+
+Resize container width the reflow the children.
+
+#### How to use the style properties
 
 The children will fade in when added, but then will transition when moved.
 
