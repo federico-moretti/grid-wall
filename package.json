@@ -8,7 +8,8 @@
     "start": "concurrently \"yarn w:tsc\" \"yarn w:rollup\" \"yarn w:browser\"",
     "browser": "concurrently \"tsc -w\" ",
     "build:umd": "rollup --config",
-    "build": "yarn tsc && yarn build:umd",
+    "build": "yarn tsc && yarn build:umd && yarn minify:umd",
+    "minify:umd": "terser umd/index.js -m -o umd/index.min.js",
     "w:build": "concurrently \"yarn w:tsc\" \"yarn w:rollup\"",
     "w:tsc": "tsc -w",
     "w:browser": "browser-sync start --server --index 'examples/static/index.html' --files 'umd/index.js' 'examples/static/index.html'",
@@ -30,6 +31,7 @@
     "jsdom": "^14.0.0",
     "rollup": "^1.7.0",
     "rollup-plugin-commonjs": "^9.2.1",
+    "terser": "^3.17.0",
     "typescript": "^3.4.0"
   }
 }
