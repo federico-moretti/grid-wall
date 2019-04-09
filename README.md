@@ -1,6 +1,6 @@
 # Grid Wall
 
-Straightforward package that will simply create a grid and flow its children it the higher position available.<br>
+Straightforward package that will simply create a wall like grid moving its children it the higher position available.<br>
 It tracks new children and if their height change and flow accordingly.
 
 ## Features
