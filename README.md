@@ -17,9 +17,9 @@ It tracks new children and if their height change and flow accordingly.
 Import as a module
 
 ```bash
-npm install --save grid-wall
+npm install --save @federico.moretti/grid-wall
 # or
-yarn add grid-wall
+yarn add @federico.moretti/grid-wall
 ```
 
 or directly in the html:

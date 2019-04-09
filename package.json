@@ -1,7 +1,9 @@
 {
-  "name": "grid-wall",
-  "version": "0.0.1",
-  "main": "index.js",
+  "name": "@federico.moretti/grid-wall",
+  "version": "1.0.1",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "author": "Federico Moretti <dj.ikos90@gmail.com>",
   "license": "MIT",
   "scripts": {
