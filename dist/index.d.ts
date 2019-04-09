@@ -1,4 +1,4 @@
-interface ReflowGridParameters {
+interface GridWallParameters {
     container: HTMLElement;
     childrenWidthInPx: number;
     enableResize?: boolean;
@@ -8,7 +8,7 @@ interface ReflowGridParameters {
     beforeStyle?: CSSStyleDeclaration;
     afterStyle?: CSSStyleDeclaration;
 }
-export default class ReflowGrid {
+export default class GridWall {
     container: HTMLElement;
     enableResize: boolean;
     resizeDebounceInMs: number;
@@ -27,7 +27,7 @@ export default class ReflowGrid {
     insertStyle: CSSStyleDeclaration;
     beforeStyle: CSSStyleDeclaration;
     afterStyle: CSSStyleDeclaration;
-    constructor(params: ReflowGridParameters);
+    constructor(params: GridWallParameters);
     missingParameter(params: {
         [name: string]: any;
     }): void;

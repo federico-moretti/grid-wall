@@ -1,8 +1,8 @@
 require('../setupTests');
-const ReflowGrid = require('../dist/index').default;
+const GridWall = require('../dist/index').default;
 
-const id = 'rg';
-let rg = null;
+const id = 'gw';
+let gw = null;
 
 function createContainerWithFiveChildren({ width = '500px', margin = 'center' } = {}) {
   document.body.innerHTML = `
@@ -15,7 +15,7 @@ function createContainerWithFiveChildren({ width = '500px', margin = 'center' } 
   </div>`;
   const container = document.getElementById(id);
   if (container) {
-    rg = new ReflowGrid({ container, childrenWidthInPx: 100, enableResize: true, margin });
+    gw = new GridWall({ container, childrenWidthInPx: 100, enableResize: true, margin });
   }
 }
 
@@ -23,7 +23,7 @@ function createContainerWithNoChildren() {
   document.body.innerHTML = `<div id="${id}" style="width: 500px;height:600px;"></div>`;
   const container = document.getElementById(id);
   if (container) {
-    rg = new ReflowGrid({ container, childrenWidthInPx: 100 });
+    gw = new GridWall({ container, childrenWidthInPx: 100 });
   }
 }
 
@@ -52,7 +52,7 @@ describe('Reflow Grid', () => {
     createContainerWithFiveChildren();
     const item2 = document.getElementById('i2');
     item2.style.height = '180px';
-    rg.reflow();
+    gw.reflow();
     const item5 = document.getElementById('i5');
     expect(item5.style.transform).toBe('translate(300px, 150px)');
   });
@@ -61,37 +61,37 @@ describe('Reflow Grid', () => {
     createContainerWithFiveChildren();
     const item2 = document.getElementById('i2');
     item2.style.height = '150px';
-    rg.reflow();
+    gw.reflow();
     const item5 = document.getElementById('i5');
     expect(item5.style.transform).toBe('translate(100px, 150px)');
   });
 
   it('should add classes to the DOM', () => {
     createContainerWithFiveChildren();
-    expect(document.head.textContent).toContain('/* reflow grid */');
+    expect(document.head.textContent).toContain('/* grid-wall */');
   });
 
   it('should get correct number of children', () => {
     createContainerWithFiveChildren();
-    expect(rg.children.length).toBe(5);
+    expect(gw.children.length).toBe(5);
   });
 
   it('should not crash with 0 children', () => {
     createContainerWithNoChildren();
-    expect(rg.children.length).toBe(0);
+    expect(gw.children.length).toBe(0);
   });
 
   it('should add class to container', () => {
     createContainerWithFiveChildren();
     const container = document.getElementById(id);
-    expect(container.classList).toContain('rg-container');
+    expect(container.classList).toContain('gw-container');
   });
 
   it('should set new width to an element', () => {
     const element = document.createElement('div');
     element.style.width = '100px';
     expect(element.style.width).toBe('100px');
-    ReflowGrid.setWidth(element, 200);
+    GridWall.setWidth(element, 200);
     expect(element.style.width).toBe('200px');
   });
 
@@ -99,81 +99,81 @@ describe('Reflow Grid', () => {
     createContainerWithFiveChildren();
     const item1 = document.getElementById('i1');
     const item5 = document.getElementById('i5');
-    expect(rg.childLastId).toBe(5);
-    expect(item1.getAttribute('data-rg-id')).toBe('1');
-    expect(item5.getAttribute('data-rg-id')).toBe('5');
-    expect(rg.childrenHeights[1]).toBe(200);
-    expect(rg.childrenHeights[5]).toBe(250);
+    expect(gw.childLastId).toBe(5);
+    expect(item1.getAttribute('data-gw-id')).toBe('1');
+    expect(item5.getAttribute('data-gw-id')).toBe('5');
+    expect(gw.childrenHeights[1]).toBe(200);
+    expect(gw.childrenHeights[5]).toBe(250);
   });
 
   it('should return lower column index and height', () => {
     createContainerWithFiveChildren();
-    const lower = rg.getLowerColumn();
+    const lower = gw.getLowerColumn();
     expect(lower).toEqual({ index: 3, height: 150 });
   });
 
   it('should set new width to an element', () => {
     createContainerWithFiveChildren();
-    const max = ReflowGrid.getMaxHeight([100, 200, 300, 50]);
+    const max = GridWall.getMaxHeight([100, 200, 300, 50]);
     expect(max).toBe(300);
   });
 
   it('should calculate margin with less children', () => {
     createContainerWithFiveChildren();
-    rg.resize(650);
-    expect(rg.marginWidth).toBe(75);
+    gw.resize(650);
+    expect(gw.marginWidth).toBe(75);
   });
 
   it('should calculate margin with smaller width', () => {
     createContainerWithFiveChildren();
-    rg.resize(400);
-    expect(rg.marginWidth).toBe(0);
+    gw.resize(400);
+    expect(gw.marginWidth).toBe(0);
   });
 
   it('should calculate margin centered', () => {
     createContainerWithFiveChildren();
-    rg.resize(450);
-    expect(rg.marginWidth).toBe(25);
+    gw.resize(450);
+    expect(gw.marginWidth).toBe(25);
   });
 
   it('should calculate margin left', () => {
     createContainerWithFiveChildren({ margin: 'left' });
-    rg.resize(450);
-    expect(rg.marginWidth).toBe(50);
+    gw.resize(450);
+    expect(gw.marginWidth).toBe(50);
   });
 
   it('should calculate margin right', () => {
     createContainerWithFiveChildren({ margin: 'right' });
-    rg.resize(450);
-    expect(rg.marginWidth).toBe(0);
+    gw.resize(450);
+    expect(gw.marginWidth).toBe(0);
   });
 
   it('should calculate margin with no columns', () => {
     createContainerWithFiveChildren({ width: '50px' });
-    expect(rg.marginWidth).toBe(0);
-    expect(rg.columnsCount).toBe(0);
+    expect(gw.marginWidth).toBe(0);
+    expect(gw.columnsCount).toBe(0);
   });
 
   it.todo('should test reflow deeply');
 
   it('should resize', () => {
     createContainerWithFiveChildren();
-    const spyReflow = jest.spyOn(rg, 'reflow');
-    const spyCalculateMargin = jest.spyOn(rg, 'calculateMargin');
-    const spyResetColumnsHeight = jest.spyOn(rg, 'resetColumnsHeight');
+    const spyReflow = jest.spyOn(gw, 'reflow');
+    const spyCalculateMargin = jest.spyOn(gw, 'calculateMargin');
+    const spyResetColumnsHeight = jest.spyOn(gw, 'resetColumnsHeight');
 
-    rg.resize(450);
+    gw.resize(450);
 
     expect(spyReflow).toHaveBeenCalledTimes(1);
     expect(spyCalculateMargin).toHaveBeenCalledTimes(1);
     expect(spyResetColumnsHeight).toHaveBeenCalledTimes(1);
-    expect(rg.columnsCount).toBe(4);
+    expect(gw.columnsCount).toBe(4);
   });
 
   it('should throw error on resize if missing width', () => {
     try {
       createContainerWithFiveChildren();
-      rg.resize();
+      gw.resize();
     } catch (error) {
       expect(error.message).toBe('Width must be a number and more than 0');
     }
@@ -182,7 +182,7 @@ describe('Reflow Grid', () => {
   it('should throw error on resize if width is not a number', () => {
     try {
       createContainerWithFiveChildren();
-      rg.resize('number');
+      gw.resize('number');
     } catch (error) {
       expect(error.message).toBe('Width must be a number and more than 0');
     }
@@ -190,16 +190,16 @@ describe('Reflow Grid', () => {
 
   it('should reflow after edit children height', done => {
     createContainerWithNoChildren();
-    const spyReflow = jest.spyOn(rg, 'reflow');
+    const spyReflow = jest.spyOn(gw, 'reflow');
 
     const element = document.createElement('div');
-    element.setAttribute('data-rg-id', '2');
+    element.setAttribute('data-gw-id', '2');
     element.style.height = '350px';
     const mutations = [{ target: element }];
 
-    rg.childrenHeights['2'] = 200;
+    gw.childrenHeights['2'] = 200;
 
-    rg.handleChildrenMutation(mutations, () => {
+    gw.handleChildrenMutation(mutations, () => {
       expect(spyReflow).toHaveBeenCalledTimes(1);
       done();
     });
@@ -207,9 +207,9 @@ describe('Reflow Grid', () => {
 
   it('should reflow after adding a children', () => {
     createContainerWithFiveChildren();
-    const spyReflow = jest.spyOn(rg, 'reflow');
-    const spyGetChildren = jest.spyOn(rg, 'getChildren');
-    const spySetWidth = jest.spyOn(ReflowGrid, 'setWidth');
+    const spyReflow = jest.spyOn(gw, 'reflow');
+    const spyGetChildren = jest.spyOn(gw, 'getChildren');
+    const spySetWidth = jest.spyOn(GridWall, 'setWidth');
 
     const container = document.getElementById(id);
     const element = document.createElement('div');
@@ -224,7 +224,7 @@ describe('Reflow Grid', () => {
       },
     ];
 
-    rg.handleContainerMutation(mutations, () => {
+    gw.handleContainerMutation(mutations, () => {
       expect(spyReflow).toHaveBeenCalledTimes(1);
       expect(spyGetChildren).toHaveBeenCalledTimes(1);
       expect(spySetWidth).toHaveBeenCalledTimes(1);
@@ -234,7 +234,7 @@ describe('Reflow Grid', () => {
 
   it('should throw errors on missing 1 param', () => {
     try {
-      new ReflowGrid({ childrenWidthInPx: 100 });
+      new GridWall({ childrenWidthInPx: 100 });
     } catch (error) {
       expect(error.message).toBe(`Missing 1 mandatory parameter:\n  container`);
     }
@@ -242,7 +242,7 @@ describe('Reflow Grid', () => {
 
   it('should throw errors on missing multiple params', () => {
     try {
-      new ReflowGrid({});
+      new GridWall({});
     } catch (error) {
       expect(error.message).toBe(
         `Missing 2 mandatory parameters:\n  container\n  childrenWidthInPx`
@@ -252,7 +252,7 @@ describe('Reflow Grid', () => {
 
   it('should throw errors on missing params object', () => {
     try {
-      new ReflowGrid();
+      new GridWall();
     } catch (error) {
       expect(error.message).toBe(`Missing mandatory parameters!`);
     }
@@ -261,7 +261,7 @@ describe('Reflow Grid', () => {
   it('should debounce', () => {
     const callback = jest.fn();
 
-    ReflowGrid.debounce(callback, 200)();
+    GridWall.debounce(callback, 200)();
     jest.runAllTimers();
 
     expect(callback).toHaveBeenCalledTimes(1);
@@ -276,7 +276,7 @@ describe('Reflow Grid', () => {
       },
     };
 
-    ReflowGrid.addStyles(element, {
+    GridWall.addStyles(element, {
       width: '100px',
       transition: 'opacity 0.2s ease-in, transform 0.2s ease-in',
     });
@@ -288,8 +288,8 @@ describe('Reflow Grid', () => {
   it('should insert transitions in reflow', () => {
     createContainerWithFiveChildren();
 
-    const spyAddStyles = jest.spyOn(ReflowGrid, 'addStyles');
-    rg.reflow();
+    const spyAddStyles = jest.spyOn(GridWall, 'addStyles');
+    gw.reflow();
 
     expect(spyAddStyles).toHaveBeenCalledTimes(5);
   });
@@ -298,8 +298,8 @@ describe('Reflow Grid', () => {
     createContainerWithFiveChildren();
     const element = document.createElement('div');
 
-    rg.addAfterStyle({ target: element });
+    gw.addAfterStyle({ target: element });
 
-    expect(element.getAttribute('data-rg-transition')).toBe('true');
+    expect(element.getAttribute('data-gw-transition')).toBe('true');
   });
 });

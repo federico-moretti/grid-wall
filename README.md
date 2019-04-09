@@ -1,4 +1,4 @@
-# Reflow Grid
+# Grid Wall
 
 Straightforward package that will simply create a grid and flow its children it the higher position available.<br>
 It tracks new children and if their height change and flow accordingly.
@@ -17,15 +17,15 @@ It tracks new children and if their height change and flow accordingly.
 Import as a module
 
 ```bash
-npm install --save reflow-grid
+npm install --save grid-wall
 # or
-yarn add reflow-grid
+yarn add grid-wall
 ```
 
 or directly in the html:
 
 ```html
-<script src="reflow-grid.min.js"></script>
+<script src="grid-wall.min.js"></script>
 ```
 
 ## Example
@@ -34,7 +34,7 @@ Basic usage:
 
 ```js
 const grid = document.querySelector('.grid');
-const reflowGrid = new ReflowGrid({
+const gridWall = new GridWall({
   container: grid,
   childrenWidthInPx: 100,
 });
@@ -42,7 +42,7 @@ const reflowGrid = new ReflowGrid({
 
 ## API
 
-#### `new ReflowGrid(params: object)`
+#### `new GridWall(params: object)`
 
 Initialize the module.
 
@@ -66,7 +66,7 @@ Resize container width the reflow the children.
 The children will fade in when added, but then will transition when moved.
 
 ```js
-new ReflowGrid({
+new GridWall({
   container: element,
   childrenWidthInPx: 200,
   insertStyle: {
@@ -85,7 +85,7 @@ new ReflowGrid({
 The children will transition to position also when added.
 
 ```js
-new ReflowGrid({
+new GridWall({
   container: element,
   childrenWidthInPx: 200,
   insertStyle: {

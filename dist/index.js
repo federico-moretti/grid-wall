@@ -1,14 +1,12 @@
 "use strict";
-// TODO: test with React
-// TODO: cleanup
 Object.defineProperty(exports, "__esModule", { value: true });
-var ReflowGrid = /** @class */ (function () {
-    function ReflowGrid(params) {
+var GridWall = /** @class */ (function () {
+    function GridWall(params) {
         var _this = this;
         this.addAfterStyle = function (event) {
             if (event.target instanceof HTMLElement) {
-                ReflowGrid.addStyles(event.target, _this.afterStyle);
-                event.target.setAttribute('data-rg-transition', 'true');
+                GridWall.addStyles(event.target, _this.afterStyle);
+                event.target.setAttribute('data-gw-transition', 'true');
                 event.target.removeEventListener('transitionend', _this.addAfterStyle, true);
             }
         };
@@ -24,7 +22,7 @@ var ReflowGrid = /** @class */ (function () {
         this.childLastId = 0;
         this.enableResize = enableResize || false;
         this.resizeDebounceInMs = resizeDebounceInMs || 100;
-        this.containerClassName = 'rg-container';
+        this.containerClassName = 'gw-container';
         this.insertStyle = insertStyle;
         this.beforeStyle = beforeStyle;
         this.afterStyle = afterStyle;
@@ -43,7 +41,7 @@ var ReflowGrid = /** @class */ (function () {
         this.addMutationObserverToChildren();
         this.reflow();
     }
-    ReflowGrid.prototype.missingParameter = function (params) {
+    GridWall.prototype.missingParameter = function (params) {
         var missingParams = [];
         Object.entries(params).forEach(function (_a) {
             var name = _a[0], param = _a[1];
@@ -57,7 +55,7 @@ var ReflowGrid = /** @class */ (function () {
             throw new Error(message_1);
         }
     };
-    ReflowGrid.prototype.calculateMargin = function () {
+    GridWall.prototype.calculateMargin = function () {
         if (this.margin === 'right')
             return 0;
         if (this.columnsCount <= 1)
@@ -68,47 +66,47 @@ var ReflowGrid = /** @class */ (function () {
             return remainingSpace;
         return Math.floor(remainingSpace / 2);
     };
-    ReflowGrid.debounce = function (callback, wait) {
+    GridWall.debounce = function (callback, wait) {
         var interval;
         return function () {
             clearTimeout(interval);
             interval = setTimeout(callback, wait);
         };
     };
-    ReflowGrid.prototype.listenToResize = function () {
+    GridWall.prototype.listenToResize = function () {
         var _this = this;
         if (this.enableResize) {
             var wait = this.resizeDebounceInMs;
-            window.addEventListener('resize', ReflowGrid.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
+            window.addEventListener('resize', GridWall.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
         }
     };
-    ReflowGrid.prototype.setChildrenHeight = function () {
+    GridWall.prototype.setChildrenHeight = function () {
         var _this = this;
         this.children.forEach(function (child) {
-            var id = child.getAttribute('data-rg-id');
+            var id = child.getAttribute('data-gw-id');
             if (!id) {
                 _this.childLastId = _this.childLastId + 1;
                 id = _this.childLastId.toString();
-                child.setAttribute('data-rg-id', id);
+                child.setAttribute('data-gw-id', id);
             }
             _this.childrenHeights[id] = child.offsetHeight;
         });
     };
-    ReflowGrid.prototype.setInitialChildrenTransition = function () {
+    GridWall.prototype.setInitialChildrenTransition = function () {
         var _this = this;
         this.children.forEach(function (child) {
-            ReflowGrid.addStyles(child, _this.insertStyle);
+            GridWall.addStyles(child, _this.insertStyle);
         });
     };
-    ReflowGrid.prototype.resetColumnsHeight = function () {
+    GridWall.prototype.resetColumnsHeight = function () {
         this.columnsHeight = [];
     };
-    ReflowGrid.prototype.addStyleToDOM = function () {
+    GridWall.prototype.addStyleToDOM = function () {
         var head = document.querySelector('head');
         if (head) {
             var style = document.createElement('style');
-            style.id = 'reflow-grid-style';
-            var css = document.createTextNode("/* reflow grid */" +
+            style.id = 'grid-wall-style';
+            var css = document.createTextNode("/* grid-wall */" +
                 ("." + this.containerClassName + "{") +
                 "  box-sizing:content-box;" +
                 "}" +
@@ -120,17 +118,17 @@ var ReflowGrid = /** @class */ (function () {
             head.appendChild(style);
         }
     };
-    ReflowGrid.setWidth = function (element, width) {
+    GridWall.setWidth = function (element, width) {
         element.style.width = width + "px";
     };
-    ReflowGrid.addStyles = function (element, styles) {
+    GridWall.addStyles = function (element, styles) {
         for (var property in styles) {
             if (element.style.hasOwnProperty(property)) {
                 element.style[property] = styles[property];
             }
         }
     };
-    ReflowGrid.prototype.getChildren = function () {
+    GridWall.prototype.getChildren = function () {
         var children = [];
         if (this.container.children.length > 0) {
             Array.from(this.container.children).forEach(function (child) {
@@ -141,20 +139,20 @@ var ReflowGrid = /** @class */ (function () {
         }
         return children;
     };
-    ReflowGrid.prototype.setChildrenWidth = function () {
+    GridWall.prototype.setChildrenWidth = function () {
         var _this = this;
         if (this.children.length > 0) {
             this.children.forEach(function (child) {
-                ReflowGrid.setWidth(child, _this.childrenWidth);
+                GridWall.setWidth(child, _this.childrenWidth);
             });
         }
     };
-    ReflowGrid.prototype.addMutationObserverToContainer = function () {
+    GridWall.prototype.addMutationObserverToContainer = function () {
         var _this = this;
         var containerObserver = new MutationObserver(function (m) { return _this.handleContainerMutation(m); });
         containerObserver.observe(this.container, { childList: true });
     };
-    ReflowGrid.prototype.addMutationObserverToChildren = function () {
+    GridWall.prototype.addMutationObserverToChildren = function () {
         var _this = this;
         if (this.children.length > 0) {
             this.children.forEach(function (child) {
@@ -163,7 +161,7 @@ var ReflowGrid = /** @class */ (function () {
             });
         }
     };
-    ReflowGrid.prototype.getLowerColumn = function () {
+    GridWall.prototype.getLowerColumn = function () {
         var lower = { index: 0, height: 0 };
         if (this.columnsHeight.length > 0) {
             this.columnsHeight.forEach(function (height, index) {
@@ -175,10 +173,10 @@ var ReflowGrid = /** @class */ (function () {
         }
         return lower;
     };
-    ReflowGrid.getMaxHeight = function (columnsHeight) {
+    GridWall.getMaxHeight = function (columnsHeight) {
         return Math.max.apply(Math, columnsHeight);
     };
-    ReflowGrid.prototype.reflow = function () {
+    GridWall.prototype.reflow = function () {
         var _this = this;
         this.resetColumnsHeight();
         this.marginWidth = this.calculateMargin();
@@ -194,17 +192,17 @@ var ReflowGrid = /** @class */ (function () {
             _this.columnsHeight[column] = Number.isInteger(_this.columnsHeight[column])
                 ? _this.columnsHeight[column] + child.offsetHeight
                 : child.offsetHeight;
-            if (!child.getAttribute('data-rg-transition')) {
-                ReflowGrid.addStyles(child, _this.beforeStyle);
+            if (!child.getAttribute('data-gw-transition')) {
+                GridWall.addStyles(child, _this.beforeStyle);
                 child.addEventListener('transitionend', _this.addAfterStyle, true);
             }
             if (child.style.transform !== transform)
                 child.style.transform = transform;
         });
-        this.container.style.height = ReflowGrid.getMaxHeight(this.columnsHeight) + 'px';
+        this.container.style.height = GridWall.getMaxHeight(this.columnsHeight) + 'px';
         this.setChildrenHeight();
     };
-    ReflowGrid.prototype.resize = function (containerWidthInPx) {
+    GridWall.prototype.resize = function (containerWidthInPx) {
         if (!containerWidthInPx && !Number.isNaN(containerWidthInPx)) {
             throw new Error('Width must be a number and more than 0');
         }
@@ -212,11 +210,11 @@ var ReflowGrid = /** @class */ (function () {
         this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
         this.reflow();
     };
-    ReflowGrid.prototype.handleChildrenMutation = function (mutations, callback) {
+    GridWall.prototype.handleChildrenMutation = function (mutations, callback) {
         var _this = this;
         mutations.forEach(function (mutation) {
             var elem = mutation.target;
-            var id = elem.getAttribute('data-rg-id');
+            var id = elem.getAttribute('data-gw-id');
             if (id) {
                 var storedHeight = _this.childrenHeights[id];
                 if (storedHeight !== elem.offsetHeight) {
@@ -227,14 +225,14 @@ var ReflowGrid = /** @class */ (function () {
         if (callback && typeof callback === 'function')
             callback();
     };
-    ReflowGrid.prototype.handleContainerMutation = function (mutations, callback) {
+    GridWall.prototype.handleContainerMutation = function (mutations, callback) {
         var _this = this;
         mutations.forEach(function (mutation) {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(function (child) {
                     if (child instanceof HTMLElement) {
-                        ReflowGrid.addStyles(child, _this.insertStyle);
-                        ReflowGrid.setWidth(child, _this.childrenWidth);
+                        GridWall.addStyles(child, _this.insertStyle);
+                        GridWall.setWidth(child, _this.childrenWidth);
                     }
                 });
                 _this.children = _this.getChildren();
@@ -244,6 +242,6 @@ var ReflowGrid = /** @class */ (function () {
         if (callback && typeof callback === 'function')
             callback();
     };
-    return ReflowGrid;
+    return GridWall;
 }());
-exports.default = ReflowGrid;
+exports.default = GridWall;

@@ -1,7 +1,4 @@
-// TODO: test with React
-// TODO: cleanup
-
-interface ReflowGridParameters {
+interface GridWallParameters {
   container: HTMLElement;
   childrenWidthInPx: number;
   enableResize?: boolean;
@@ -12,7 +9,7 @@ interface ReflowGridParameters {
   afterStyle?: CSSStyleDeclaration;
 }
 
-export default class ReflowGrid {
+export default class GridWall {
   container: HTMLElement;
   enableResize: boolean;
   resizeDebounceInMs: number;
@@ -30,7 +27,7 @@ export default class ReflowGrid {
   beforeStyle: CSSStyleDeclaration;
   afterStyle: CSSStyleDeclaration;
 
-  constructor(params: ReflowGridParameters) {
+  constructor(params: GridWallParameters) {
     if (!params) throw new Error('Missing mandatory parameters!');
     const {
       container,
@@ -52,7 +49,7 @@ export default class ReflowGrid {
     this.childLastId = 0;
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
-    this.containerClassName = 'rg-container';
+    this.containerClassName = 'gw-container';
     this.insertStyle = insertStyle;
     this.beforeStyle = beforeStyle;
     this.afterStyle = afterStyle;
@@ -114,18 +111,18 @@ export default class ReflowGrid {
       const wait = this.resizeDebounceInMs;
       window.addEventListener(
         'resize',
-        ReflowGrid.debounce(() => this.resize(this.container.clientWidth), wait)
+        GridWall.debounce(() => this.resize(this.container.clientWidth), wait)
       );
     }
   }
 
   setChildrenHeight(): void {
     this.children.forEach(child => {
-      let id = child.getAttribute('data-rg-id');
+      let id = child.getAttribute('data-gw-id');
       if (!id) {
         this.childLastId = this.childLastId + 1;
         id = this.childLastId.toString();
-        child.setAttribute('data-rg-id', id);
+        child.setAttribute('data-gw-id', id);
       }
       this.childrenHeights[id] = child.offsetHeight;
     });
@@ -133,7 +130,7 @@ export default class ReflowGrid {
 
   setInitialChildrenTransition(): void {
     this.children.forEach(child => {
-      ReflowGrid.addStyles(child, this.insertStyle);
+      GridWall.addStyles(child, this.insertStyle);
     });
   }
 
@@ -145,9 +142,9 @@ export default class ReflowGrid {
     const head = document.querySelector('head');
     if (head) {
       const style = document.createElement('style');
-      style.id = 'reflow-grid-style';
+      style.id = 'grid-wall-style';
       const css = document.createTextNode(
-        `/* reflow grid */` +
+        `/* grid-wall */` +
           `.${this.containerClassName}{` +
           `  box-sizing:content-box;` +
           `}` +
@@ -188,7 +185,7 @@ export default class ReflowGrid {
   setChildrenWidth(): void {
     if (this.children.length > 0) {
       this.children.forEach(child => {
-        ReflowGrid.setWidth(child, this.childrenWidth);
+        GridWall.setWidth(child, this.childrenWidth);
       });
     }
   }
@@ -226,8 +223,8 @@ export default class ReflowGrid {
 
   addAfterStyle = (event: TransitionEvent) => {
     if (event.target instanceof HTMLElement) {
-      ReflowGrid.addStyles(event.target, this.afterStyle);
-      event.target.setAttribute('data-rg-transition', 'true');
+      GridWall.addStyles(event.target, this.afterStyle);
+      event.target.setAttribute('data-gw-transition', 'true');
       event.target.removeEventListener('transitionend', this.addAfterStyle, true);
     }
   };
@@ -250,13 +247,13 @@ export default class ReflowGrid {
         ? this.columnsHeight[column] + child.offsetHeight
         : child.offsetHeight;
 
-      if (!child.getAttribute('data-rg-transition')) {
-        ReflowGrid.addStyles(child, this.beforeStyle);
+      if (!child.getAttribute('data-gw-transition')) {
+        GridWall.addStyles(child, this.beforeStyle);
         child.addEventListener('transitionend', this.addAfterStyle, true);
       }
       if (child.style.transform !== transform) child.style.transform = transform;
     });
-    this.container.style.height = ReflowGrid.getMaxHeight(this.columnsHeight) + 'px';
+    this.container.style.height = GridWall.getMaxHeight(this.columnsHeight) + 'px';
     this.setChildrenHeight();
   }
 
@@ -273,7 +270,7 @@ export default class ReflowGrid {
   handleChildrenMutation(mutations: MutationRecord[], callback?: () => void): void {
     mutations.forEach(mutation => {
       const elem = mutation.target as HTMLElement;
-      const id = elem.getAttribute('data-rg-id');
+      const id = elem.getAttribute('data-gw-id');
 
       if (id) {
         const storedHeight = this.childrenHeights[id];
@@ -291,8 +288,8 @@ export default class ReflowGrid {
       if (mutation.type === 'childList') {
         mutation.addedNodes.forEach(child => {
           if (child instanceof HTMLElement) {
-            ReflowGrid.addStyles(child, this.insertStyle);
-            ReflowGrid.setWidth(child, this.childrenWidth);
+            GridWall.addStyles(child, this.insertStyle);
+            GridWall.setWidth(child, this.childrenWidth);
           }
         });
         this.children = this.getChildren();
