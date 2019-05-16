@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-import ReflowGrid from '../../dist/index';
+import GridWall from '../../dist/index';
 
 const addButtonContainerStyle = {
   display: 'flex',
@@ -71,20 +71,10 @@ function App() {
   }
 
   React.useEffect(() => {
-    new ReflowGrid({
+    new GridWall({
       container: containerRef.current,
       childrenWidthInPx: 200,
       enableResize: true,
-      insertStyle: {
-        opacity: '0',
-        transition: 'opacity 0.2s ease-in, transform 0s ease-in',
-      },
-      beforeStyle: {
-        opacity: '1',
-      },
-      afterStyle: {
-        transition: 'opacity 0.2s ease-in, transform 0.2s ease-in',
-      },
     });
   }, []);
 

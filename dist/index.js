@@ -1,18 +1,34 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
+var popmotion_1 = require("popmotion");
 var GridWall = /** @class */ (function () {
     function GridWall(params) {
         var _this = this;
         this.addAfterStyle = function (event) {
             if (event.target instanceof HTMLElement) {
-                GridWall.addStyles(event.target, _this.afterStyle);
                 event.target.setAttribute('data-gw-transition', 'true');
                 event.target.removeEventListener('transitionend', _this.addAfterStyle, true);
             }
         };
         if (!params)
             throw new Error('Missing mandatory parameters!');
-        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, _a = params.insertStyle, insertStyle = _a === void 0 ? {} : _a, _b = params.beforeStyle, beforeStyle = _b === void 0 ? {} : _b, _c = params.afterStyle, afterStyle = _c === void 0 ? {} : _c;
+        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, _a = params.onEnter, onEnter = _a === void 0 ? {
+            types: ['tween'],
+            properties: ['opacity', 'transform'],
+            from: [0, 'scale(0.5)'],
+            to: [1, 'scale(1)'],
+        } : _a, _b = params.onChange, onChange = _b === void 0 ? { types: ['spring'], properties: ['position'] } : _b, _c = params.onExit, onExit = _c === void 0 ? { types: ['tween'], properties: ['opacity'], from: [1], to: [0] } : _c;
         this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
         this.container = container;
         this.childrenWidth = childrenWidthInPx;
@@ -23,22 +39,25 @@ var GridWall = /** @class */ (function () {
         this.enableResize = enableResize || false;
         this.resizeDebounceInMs = resizeDebounceInMs || 100;
         this.containerClassName = 'gw-container';
-        this.insertStyle = insertStyle;
-        this.beforeStyle = beforeStyle;
-        this.afterStyle = afterStyle;
+        this.onEnter = onEnter;
+        this.onChange = onChange;
+        this.positionAnimationEnabled = this.isPositionAnimationEnabled();
+        this.onExit = onExit;
+        this.springProperties = { stiffness: 100, damping: 14, mass: 1 };
         // we have to apply styles to DOM before doing any calculation
         this.addStyleToDOM();
-        this.children = this.getChildren();
+        this.children = this.getInitialChildren();
         this.container.classList.add(this.containerClassName);
         this.containerWidth = this.container.clientWidth;
         this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
         this.setChildrenWidth();
         this.setChildrenHeight();
-        this.setInitialChildrenTransition();
+        // this.setInitialChildrenTransition();
         this.listenToResize();
         this.marginWidth = this.calculateMargin();
         this.addMutationObserverToContainer();
         this.addMutationObserverToChildren();
+        // spring({ from: 0, to: 110 }).start((v: number) => console.log(v));
         this.reflow();
     }
     GridWall.prototype.missingParameter = function (params) {
@@ -80,23 +99,23 @@ var GridWall = /** @class */ (function () {
             window.addEventListener('resize', GridWall.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
         }
     };
+    GridWall.prototype.setChildId = function (child) {
+        this.childLastId = this.childLastId + 1;
+        var id = this.childLastId.toString();
+        child.setAttribute('data-gw-id', id);
+        return id;
+    };
     GridWall.prototype.setChildrenHeight = function () {
         var _this = this;
         this.children.forEach(function (child) {
             var id = child.getAttribute('data-gw-id');
-            if (!id) {
-                _this.childLastId = _this.childLastId + 1;
-                id = _this.childLastId.toString();
-                child.setAttribute('data-gw-id', id);
-            }
+            if (!id)
+                id = _this.setChildId(child);
             _this.childrenHeights[id] = child.offsetHeight;
         });
     };
-    GridWall.prototype.setInitialChildrenTransition = function () {
-        var _this = this;
-        this.children.forEach(function (child) {
-            GridWall.addStyles(child, _this.insertStyle);
-        });
+    GridWall.prototype.isPositionAnimationEnabled = function () {
+        return Boolean(this.onChange.properties.find(function (property) { return property === 'position'; }));
     };
     GridWall.prototype.resetColumnsHeight = function () {
         this.columnsHeight = [];
@@ -128,16 +147,43 @@ var GridWall = /** @class */ (function () {
             }
         }
     };
-    GridWall.prototype.getChildren = function () {
+    GridWall.prototype.removeChild = function (index, callback) {
+        // remove children with animation
+        // on animation end do callback
+    };
+    GridWall.prototype.getInitialChildren = function () {
+        var _this = this;
         var children = [];
         if (this.container.children.length > 0) {
             Array.from(this.container.children).forEach(function (child) {
                 if (child instanceof HTMLElement) {
-                    children.push(child);
+                    var elem = child;
+                    elem.firstRender = true;
+                    elem.style.transform = 'translate(0px, 0px)';
+                    _this.setChildId(elem);
+                    children.push(elem);
                 }
             });
         }
         return children;
+    };
+    GridWall.prototype._addChild = function (child) {
+        var _this = this;
+        var animation = popmotion_1.spring(__assign({ from: this.onEnter.from, to: this.onEnter.to }, this.springProperties));
+        animation.start(function (v) {
+            _this.onEnter.properties.forEach(function (property, i) {
+                if (property === 'transform')
+                    return;
+                child.style[property] = v[i];
+            });
+        });
+        var elem = child;
+        elem.firstRender = true;
+        this.children.push(child);
+    };
+    GridWall.prototype._removeChild = function (child) {
+        var id = child.getAttribute('data-gw-id');
+        this.children = this.children.filter(function (c) { return c.getAttribute('data-gw-id') !== id; });
     };
     GridWall.prototype.setChildrenWidth = function () {
         var _this = this;
@@ -182,6 +228,7 @@ var GridWall = /** @class */ (function () {
         this.marginWidth = this.calculateMargin();
         this.children.forEach(function (child, index) {
             var column = index;
+            var childStyler = popmotion_1.styler(child);
             var transform = "translate(" + (column * _this.childrenWidth + _this.marginWidth) + "px, 0px)";
             if ((column + 1) * _this.childrenWidth >= _this.containerWidth) {
                 var lowerColumn = _this.getLowerColumn();
@@ -192,12 +239,17 @@ var GridWall = /** @class */ (function () {
             _this.columnsHeight[column] = Number.isInteger(_this.columnsHeight[column])
                 ? _this.columnsHeight[column] + child.offsetHeight
                 : child.offsetHeight;
-            if (!child.getAttribute('data-gw-transition')) {
-                GridWall.addStyles(child, _this.beforeStyle);
-                child.addEventListener('transitionend', _this.addAfterStyle, true);
+            if (_this.positionAnimationEnabled && !child.firstRender) {
+                var oldTransform = child.style.transform;
+                var animation = popmotion_1.spring(__assign({ from: [oldTransform], to: [transform] }, _this.springProperties));
+                if (child.animationStop)
+                    child.animationStop.stop();
+                child.animationStop = animation.start(function (v) { return (child.style.transform = v[0]); });
             }
-            if (child.style.transform !== transform)
+            else {
                 child.style.transform = transform;
+            }
+            child.firstRender = false;
         });
         this.container.style.height = GridWall.getMaxHeight(this.columnsHeight) + 'px';
         this.setChildrenHeight();
@@ -231,11 +283,18 @@ var GridWall = /** @class */ (function () {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(function (child) {
                     if (child instanceof HTMLElement) {
-                        GridWall.addStyles(child, _this.insertStyle);
                         GridWall.setWidth(child, _this.childrenWidth);
+                        child.style.transform = 'translate(0px, 0px)';
+                        _this.setChildId(child);
+                        _this._addChild(child);
                     }
                 });
-                _this.children = _this.getChildren();
+                mutation.removedNodes.forEach(function (child) {
+                    if (child instanceof HTMLElement) {
+                        _this._removeChild(child);
+                    }
+                });
+                // this.children = this.getChildren();
                 _this.reflow();
             }
         });

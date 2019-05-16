@@ -1,19 +1,39 @@
+import { spring, tween, styler, Action, ColdSubscription } from 'popmotion';
+
 interface GridWallParameters {
   container: HTMLElement;
   childrenWidthInPx: number;
   enableResize?: boolean;
   margin?: 'center' | 'left' | 'right';
   resizeDebounceInMs?: number;
+  onEnter?: Animations;
+  onChange?: Animations;
+  onExit?: Animations;
   insertStyle?: CSSStyleDeclaration;
   beforeStyle?: CSSStyleDeclaration;
   afterStyle?: CSSStyleDeclaration;
+}
+
+type AnimationTypes = 'spring' | 'tween';
+
+interface Animations {
+  types: AnimationTypes[];
+  properties: string[];
+  from?: (number | string)[];
+  to?: (number | string)[];
+}
+
+interface ChildElement extends HTMLElement {
+  animation?: Action;
+  animationStop?: ColdSubscription;
+  firstRender?: boolean;
 }
 
 export default class GridWall {
   container: HTMLElement;
   enableResize: boolean;
   resizeDebounceInMs: number;
-  children: HTMLElement[];
+  children: ChildElement[];
   childrenHeights: { [name: string]: number };
   childrenWidth: number;
   margin: 'center' | 'left' | 'right';
@@ -23,9 +43,11 @@ export default class GridWall {
   columnsHeight: number[];
   childLastId: number;
   containerClassName: string;
-  insertStyle: CSSStyleDeclaration;
-  beforeStyle: CSSStyleDeclaration;
-  afterStyle: CSSStyleDeclaration;
+  springProperties: { stiffness: number; damping: number; mass: number };
+  onEnter: Animations;
+  onChange: Animations;
+  onExit: Animations;
+  positionAnimationEnabled: boolean;
 
   constructor(params: GridWallParameters) {
     if (!params) throw new Error('Missing mandatory parameters!');
@@ -35,9 +57,14 @@ export default class GridWall {
       enableResize,
       resizeDebounceInMs,
       margin,
-      insertStyle = {} as CSSStyleDeclaration,
-      beforeStyle = {} as CSSStyleDeclaration,
-      afterStyle = {} as CSSStyleDeclaration,
+      onEnter = {
+        types: ['tween'],
+        properties: ['opacity', 'transform'],
+        from: [0, 'scale(0.5)'],
+        to: [1, 'scale(1)'],
+      } as Animations,
+      onChange = { types: ['spring'], properties: ['position'] } as Animations,
+      onExit = { types: ['tween'], properties: ['opacity'], from: [1], to: [0] } as Animations,
     } = params;
     this.missingParameter({ container, childrenWidthInPx });
 
@@ -50,25 +77,28 @@ export default class GridWall {
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
     this.containerClassName = 'gw-container';
-    this.insertStyle = insertStyle;
-    this.beforeStyle = beforeStyle;
-    this.afterStyle = afterStyle;
+    this.onEnter = onEnter;
+    this.onChange = onChange;
+    this.positionAnimationEnabled = this.isPositionAnimationEnabled();
+    this.onExit = onExit;
+    this.springProperties = { stiffness: 100, damping: 14, mass: 1 };
 
     // we have to apply styles to DOM before doing any calculation
     this.addStyleToDOM();
 
-    this.children = this.getChildren();
+    this.children = this.getInitialChildren();
     this.container.classList.add(this.containerClassName);
     this.containerWidth = this.container.clientWidth;
     this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
 
     this.setChildrenWidth();
     this.setChildrenHeight();
-    this.setInitialChildrenTransition();
+    // this.setInitialChildrenTransition();
     this.listenToResize();
     this.marginWidth = this.calculateMargin();
     this.addMutationObserverToContainer();
     this.addMutationObserverToChildren();
+    // spring({ from: 0, to: 110 }).start((v: number) => console.log(v));
 
     this.reflow();
   }
@@ -116,22 +146,23 @@ export default class GridWall {
     }
   }
 
+  setChildId(child: HTMLElement | ChildElement): string {
+    this.childLastId = this.childLastId + 1;
+    const id = this.childLastId.toString();
+    child.setAttribute('data-gw-id', id);
+    return id;
+  }
+
   setChildrenHeight(): void {
     this.children.forEach(child => {
       let id = child.getAttribute('data-gw-id');
-      if (!id) {
-        this.childLastId = this.childLastId + 1;
-        id = this.childLastId.toString();
-        child.setAttribute('data-gw-id', id);
-      }
+      if (!id) id = this.setChildId(child);
       this.childrenHeights[id] = child.offsetHeight;
     });
   }
 
-  setInitialChildrenTransition(): void {
-    this.children.forEach(child => {
-      GridWall.addStyles(child, this.insertStyle);
-    });
+  isPositionAnimationEnabled(): boolean {
+    return Boolean(this.onChange.properties.find(property => property === 'position'));
   }
 
   resetColumnsHeight(): void {
@@ -170,16 +201,48 @@ export default class GridWall {
     }
   }
 
-  getChildren(): HTMLElement[] {
-    let children: HTMLElement[] = [];
+  removeChild(index: number, callback: () => void): void {
+    // remove children with animation
+    // on animation end do callback
+  }
+
+  getInitialChildren(): ChildElement[] {
+    let children: ChildElement[] = [];
     if (this.container.children.length > 0) {
       Array.from(this.container.children).forEach(child => {
         if (child instanceof HTMLElement) {
-          children.push(child);
+          const elem = child as ChildElement;
+          elem.firstRender = true;
+          elem.style.transform = 'translate(0px, 0px)';
+          this.setChildId(elem);
+          children.push(elem);
         }
       });
     }
     return children;
+  }
+
+  private _addChild(child: HTMLElement | ChildElement): void {
+    const animation = spring({
+      from: this.onEnter.from,
+      to: this.onEnter.to,
+      ...this.springProperties,
+    });
+    animation.start((v: string[]) => {
+      this.onEnter.properties.forEach((property, i) => {
+        if (property === 'transform') return;
+        child.style[property as any] = v[i];
+      });
+    });
+
+    const elem = child as ChildElement;
+    elem.firstRender = true;
+    this.children.push(child);
+  }
+
+  private _removeChild(child: HTMLElement | ChildElement): void {
+    const id = child.getAttribute('data-gw-id');
+    this.children = this.children.filter(c => c.getAttribute('data-gw-id') !== id);
   }
 
   setChildrenWidth(): void {
@@ -223,7 +286,6 @@ export default class GridWall {
 
   addAfterStyle = (event: TransitionEvent) => {
     if (event.target instanceof HTMLElement) {
-      GridWall.addStyles(event.target, this.afterStyle);
       event.target.setAttribute('data-gw-transition', 'true');
       event.target.removeEventListener('transitionend', this.addAfterStyle, true);
     }
@@ -234,6 +296,7 @@ export default class GridWall {
     this.marginWidth = this.calculateMargin();
     this.children.forEach((child, index) => {
       let column = index;
+      const childStyler = styler(child);
       let transform = `translate(${column * this.childrenWidth + this.marginWidth}px, 0px)`;
 
       if ((column + 1) * this.childrenWidth >= this.containerWidth) {
@@ -247,11 +310,19 @@ export default class GridWall {
         ? this.columnsHeight[column] + child.offsetHeight
         : child.offsetHeight;
 
-      if (!child.getAttribute('data-gw-transition')) {
-        GridWall.addStyles(child, this.beforeStyle);
-        child.addEventListener('transitionend', this.addAfterStyle, true);
+      if (this.positionAnimationEnabled && !child.firstRender) {
+        const oldTransform = child.style.transform;
+        const animation = spring({
+          from: [oldTransform],
+          to: [transform],
+          ...this.springProperties,
+        });
+        if (child.animationStop) child.animationStop.stop();
+        child.animationStop = animation.start((v: string[]) => (child.style.transform = v[0]));
+      } else {
+        child.style.transform = transform;
       }
-      if (child.style.transform !== transform) child.style.transform = transform;
+      child.firstRender = false;
     });
     this.container.style.height = GridWall.getMaxHeight(this.columnsHeight) + 'px';
     this.setChildrenHeight();
@@ -288,11 +359,19 @@ export default class GridWall {
       if (mutation.type === 'childList') {
         mutation.addedNodes.forEach(child => {
           if (child instanceof HTMLElement) {
-            GridWall.addStyles(child, this.insertStyle);
             GridWall.setWidth(child, this.childrenWidth);
+            child.style.transform = 'translate(0px, 0px)';
+            this.setChildId(child);
+            this._addChild(child);
           }
         });
-        this.children = this.getChildren();
+
+        mutation.removedNodes.forEach(child => {
+          if (child instanceof HTMLElement) {
+            this._removeChild(child);
+          }
+        });
+        // this.children = this.getChildren();
         this.reflow();
       }
     });
