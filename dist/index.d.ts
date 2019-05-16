@@ -1,4 +1,5 @@
-import { Action, ColdSubscription } from 'popmotion';
+import { ColdSubscription } from 'popmotion';
+import { Styler } from 'stylefire';
 interface GridWallParameters {
     container: HTMLElement;
     childrenWidthInPx: number;
@@ -12,23 +13,30 @@ interface GridWallParameters {
     beforeStyle?: CSSStyleDeclaration;
     afterStyle?: CSSStyleDeclaration;
 }
-declare type AnimationTypes = 'spring' | 'tween';
 interface Animations {
-    types: AnimationTypes[];
-    properties: string[];
-    from?: (number | string)[];
-    to?: (number | string)[];
+    from?: {
+        [key: string]: number | string;
+    };
+    to?: {
+        [key: string]: number | string;
+    };
 }
-interface ChildElement extends HTMLElement {
-    animation?: Action;
+declare class Tile {
+    onEnterAnimations: Animations;
+    animations?: Animations;
     animationStop?: ColdSubscription;
-    firstRender?: boolean;
+    x: number;
+    y: number;
+    firstRender: boolean;
+    element: HTMLElement;
+    styler: Styler;
+    constructor(element: HTMLElement);
 }
-export default class GridWall {
+export default class Tiles {
     container: HTMLElement;
     enableResize: boolean;
     resizeDebounceInMs: number;
-    children: ChildElement[];
+    children: Tile[];
     childrenHeights: {
         [name: string]: number;
     };
@@ -46,7 +54,7 @@ export default class GridWall {
         mass: number;
     };
     onEnter: Animations;
-    onChange: Animations;
+    onChange?: Animations;
     onExit: Animations;
     positionAnimationEnabled: boolean;
     constructor(params: GridWallParameters);
@@ -56,15 +64,15 @@ export default class GridWall {
     calculateMargin(): number;
     static debounce(callback: () => void, wait: number): () => void;
     listenToResize(): void;
-    setChildId(child: HTMLElement | ChildElement): string;
+    setChildId(child: Tile): string;
     setChildrenHeight(): void;
     isPositionAnimationEnabled(): boolean;
     resetColumnsHeight(): void;
     addStyleToDOM(): void;
-    static setWidth(element: HTMLElement, width: number): void;
-    static addStyles(element: HTMLElement, styles: CSSStyleDeclaration): void;
+    static setWidth(element: Tile, width: number): void;
+    static addStyles(element: Tile, styles: CSSStyleDeclaration): void;
     removeChild(index: number, callback: () => void): void;
-    getInitialChildren(): ChildElement[];
+    getInitialChildren(): Tile[];
     private _addChild;
     private _removeChild;
     setChildrenWidth(): void;

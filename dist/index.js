@@ -12,8 +12,25 @@ var __assign = (this && this.__assign) || function () {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var popmotion_1 = require("popmotion");
-var GridWall = /** @class */ (function () {
-    function GridWall(params) {
+var stylefire_1 = require("stylefire");
+// interface ChildElement extends HTMLElement {
+//   animations?: Action[];
+//   animationStop?: ColdSubscription;
+//   firstRender?: boolean;
+// }
+var Tile = /** @class */ (function () {
+    function Tile(element) {
+        this.element = element;
+        this.styler = stylefire_1.default(element);
+        this.firstRender = true;
+        this.x = 0;
+        this.y = 0;
+        this.onEnterAnimations = { from: {}, to: {} };
+    }
+    return Tile;
+}());
+var Tiles = /** @class */ (function () {
+    function Tiles(params) {
         var _this = this;
         this.addAfterStyle = function (event) {
             if (event.target instanceof HTMLElement) {
@@ -24,11 +41,15 @@ var GridWall = /** @class */ (function () {
         if (!params)
             throw new Error('Missing mandatory parameters!');
         var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, _a = params.onEnter, onEnter = _a === void 0 ? {
-            types: ['tween'],
-            properties: ['opacity', 'transform'],
-            from: [0, 'scale(0.5)'],
-            to: [1, 'scale(1)'],
-        } : _a, _b = params.onChange, onChange = _b === void 0 ? { types: ['spring'], properties: ['position'] } : _b, _c = params.onExit, onExit = _c === void 0 ? { types: ['tween'], properties: ['opacity'], from: [1], to: [0] } : _c;
+            // types: ['tween'],
+            // properties: ['opacity', 'scale'],
+            from: { opacity: 0, scale: 0.5 },
+            to: { opacity: 1, scale: 1 },
+        } : _a, 
+        // onChange = { types: ['spring'], properties: ['position'] } as Animations,
+        _b = params.onExit, 
+        // onChange = { types: ['spring'], properties: ['position'] } as Animations,
+        onExit = _b === void 0 ? { types: ['tween'], from: { opacity: 1 }, to: { opacity: 0 } } : _b;
         this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
         this.container = container;
         this.childrenWidth = childrenWidthInPx;
@@ -40,10 +61,10 @@ var GridWall = /** @class */ (function () {
         this.resizeDebounceInMs = resizeDebounceInMs || 100;
         this.containerClassName = 'gw-container';
         this.onEnter = onEnter;
-        this.onChange = onChange;
+        // this.onChange = onChange;
         this.positionAnimationEnabled = this.isPositionAnimationEnabled();
         this.onExit = onExit;
-        this.springProperties = { stiffness: 100, damping: 14, mass: 1 };
+        this.springProperties = { stiffness: 120, damping: 14, mass: 1 };
         // we have to apply styles to DOM before doing any calculation
         this.addStyleToDOM();
         this.children = this.getInitialChildren();
@@ -60,7 +81,7 @@ var GridWall = /** @class */ (function () {
         // spring({ from: 0, to: 110 }).start((v: number) => console.log(v));
         this.reflow();
     }
-    GridWall.prototype.missingParameter = function (params) {
+    Tiles.prototype.missingParameter = function (params) {
         var missingParams = [];
         Object.entries(params).forEach(function (_a) {
             var name = _a[0], param = _a[1];
@@ -74,7 +95,7 @@ var GridWall = /** @class */ (function () {
             throw new Error(message_1);
         }
     };
-    GridWall.prototype.calculateMargin = function () {
+    Tiles.prototype.calculateMargin = function () {
         if (this.margin === 'right')
             return 0;
         if (this.columnsCount <= 1)
@@ -85,42 +106,43 @@ var GridWall = /** @class */ (function () {
             return remainingSpace;
         return Math.floor(remainingSpace / 2);
     };
-    GridWall.debounce = function (callback, wait) {
+    Tiles.debounce = function (callback, wait) {
         var interval;
         return function () {
             clearTimeout(interval);
             interval = setTimeout(callback, wait);
         };
     };
-    GridWall.prototype.listenToResize = function () {
+    Tiles.prototype.listenToResize = function () {
         var _this = this;
         if (this.enableResize) {
             var wait = this.resizeDebounceInMs;
-            window.addEventListener('resize', GridWall.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
+            window.addEventListener('resize', Tiles.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
         }
     };
-    GridWall.prototype.setChildId = function (child) {
+    Tiles.prototype.setChildId = function (child) {
         this.childLastId = this.childLastId + 1;
         var id = this.childLastId.toString();
-        child.setAttribute('data-gw-id', id);
+        child.element.setAttribute('data-gw-id', id);
         return id;
     };
-    GridWall.prototype.setChildrenHeight = function () {
+    Tiles.prototype.setChildrenHeight = function () {
         var _this = this;
         this.children.forEach(function (child) {
-            var id = child.getAttribute('data-gw-id');
+            var id = child.element.getAttribute('data-gw-id');
             if (!id)
                 id = _this.setChildId(child);
-            _this.childrenHeights[id] = child.offsetHeight;
+            _this.childrenHeights[id] = child.element.offsetHeight;
         });
     };
-    GridWall.prototype.isPositionAnimationEnabled = function () {
-        return Boolean(this.onChange.properties.find(function (property) { return property === 'position'; }));
+    Tiles.prototype.isPositionAnimationEnabled = function () {
+        return true;
+        // return Boolean(this.onChange.properties.find(property => property === 'position'));
     };
-    GridWall.prototype.resetColumnsHeight = function () {
+    Tiles.prototype.resetColumnsHeight = function () {
         this.columnsHeight = [];
     };
-    GridWall.prototype.addStyleToDOM = function () {
+    Tiles.prototype.addStyleToDOM = function () {
         var head = document.querySelector('head');
         if (head) {
             var style = document.createElement('style');
@@ -137,77 +159,75 @@ var GridWall = /** @class */ (function () {
             head.appendChild(style);
         }
     };
-    GridWall.setWidth = function (element, width) {
-        element.style.width = width + "px";
+    Tiles.setWidth = function (element, width) {
+        element.element.style.width = width + "px";
     };
-    GridWall.addStyles = function (element, styles) {
+    Tiles.addStyles = function (element, styles) {
         for (var property in styles) {
-            if (element.style.hasOwnProperty(property)) {
-                element.style[property] = styles[property];
+            if (element.element.style.hasOwnProperty(property)) {
+                element.element.style[property] = styles[property];
             }
         }
     };
-    GridWall.prototype.removeChild = function (index, callback) {
+    Tiles.prototype.removeChild = function (index, callback) {
         // remove children with animation
         // on animation end do callback
     };
-    GridWall.prototype.getInitialChildren = function () {
+    Tiles.prototype.getInitialChildren = function () {
         var _this = this;
         var children = [];
         if (this.container.children.length > 0) {
             Array.from(this.container.children).forEach(function (child) {
                 if (child instanceof HTMLElement) {
-                    var elem = child;
-                    elem.firstRender = true;
-                    elem.style.transform = 'translate(0px, 0px)';
-                    _this.setChildId(elem);
-                    children.push(elem);
+                    var tile = new Tile(child);
+                    tile.firstRender = true;
+                    tile.element.style.transform = 'translateX(0px) translateY(0px)';
+                    _this.setChildId(tile);
+                    children.push(tile);
                 }
             });
         }
         return children;
     };
-    GridWall.prototype._addChild = function (child) {
-        var _this = this;
-        var animation = popmotion_1.spring(__assign({ from: this.onEnter.from, to: this.onEnter.to }, this.springProperties));
-        animation.start(function (v) {
-            _this.onEnter.properties.forEach(function (property, i) {
-                if (property === 'transform')
-                    return;
-                child.style[property] = v[i];
-            });
-        });
+    Tiles.prototype._addChild = function (child) {
+        // const animation = spring({
+        //   from: this.onEnter.from,
+        //   to: this.onEnter.to,
+        //   ...this.springProperties,
+        // });
+        // animation.start((v: any) => child.styler.set(v));
         var elem = child;
+        elem.onEnterAnimations = { from: this.onEnter.from, to: this.onEnter.to };
         elem.firstRender = true;
         this.children.push(child);
     };
-    GridWall.prototype._removeChild = function (child) {
-        var id = child.getAttribute('data-gw-id');
-        this.children = this.children.filter(function (c) { return c.getAttribute('data-gw-id') !== id; });
+    Tiles.prototype._removeChild = function (child) {
+        var id = child.element.getAttribute('data-gw-id');
+        this.children = this.children.filter(function (c) { return c.element.getAttribute('data-gw-id') !== id; });
     };
-    GridWall.prototype.setChildrenWidth = function () {
+    Tiles.prototype.setChildrenWidth = function () {
         var _this = this;
         if (this.children.length > 0) {
             this.children.forEach(function (child) {
-                GridWall.setWidth(child, _this.childrenWidth);
+                Tiles.setWidth(child, _this.childrenWidth);
             });
         }
     };
-    GridWall.prototype.addMutationObserverToContainer = function () {
+    Tiles.prototype.addMutationObserverToContainer = function () {
         var _this = this;
         var containerObserver = new MutationObserver(function (m) { return _this.handleContainerMutation(m); });
         containerObserver.observe(this.container, { childList: true });
     };
-    GridWall.prototype.addMutationObserverToChildren = function () {
+    Tiles.prototype.addMutationObserverToChildren = function () {
         var _this = this;
         if (this.children.length > 0) {
             this.children.forEach(function (child) {
                 var containerObserver = new MutationObserver(function (m) { return _this.handleChildrenMutation(m); });
-                containerObserver.observe(child, { attributes: true });
+                containerObserver.observe(child.element, { attributes: true });
             });
         }
     };
-    GridWall.prototype.getLowerColumn = function () {
+    Tiles.prototype.getLowerColumn = function () {
         var lower = { index: 0, height: 0 };
         if (this.columnsHeight.length > 0) {
             this.columnsHeight.forEach(function (height, index) {
@@ -219,42 +239,56 @@ var GridWall = /** @class */ (function () {
         }
         return lower;
     };
-    GridWall.getMaxHeight = function (columnsHeight) {
+    Tiles.getMaxHeight = function (columnsHeight) {
         return Math.max.apply(Math, columnsHeight);
     };
-    GridWall.prototype.reflow = function () {
+    Tiles.prototype.reflow = function () {
         var _this = this;
         this.resetColumnsHeight();
         this.marginWidth = this.calculateMargin();
         this.children.forEach(function (child, index) {
             var column = index;
-            var childStyler = popmotion_1.styler(child);
-            var transform = "translate(" + (column * _this.childrenWidth + _this.marginWidth) + "px, 0px)";
+            var x = column * _this.childrenWidth + _this.marginWidth;
+            var y = 0;
             if ((column + 1) * _this.childrenWidth >= _this.containerWidth) {
                 var lowerColumn = _this.getLowerColumn();
                 column = lowerColumn.index;
-                var x = column * _this.childrenWidth;
-                transform = "translate(" + (_this.marginWidth + x) + "px, " + lowerColumn.height + "px)";
+                x = _this.marginWidth + column * _this.childrenWidth;
+                y = lowerColumn.height;
             }
             _this.columnsHeight[column] = Number.isInteger(_this.columnsHeight[column])
-                ? _this.columnsHeight[column] + child.offsetHeight
-                : child.offsetHeight;
-            if (_this.positionAnimationEnabled && !child.firstRender) {
-                var oldTransform = child.style.transform;
-                var animation = popmotion_1.spring(__assign({ from: [oldTransform], to: [transform] }, _this.springProperties));
+                ? _this.columnsHeight[column] + child.element.offsetHeight
+                : child.element.offsetHeight;
+            var from = {};
+            var to = {};
+            if (child.firstRender) {
+                from = __assign({}, child.onEnterAnimations.from);
+                to = __assign({}, child.onEnterAnimations.to);
+            }
+            var coords = [0, 0];
+            if (child.element.style.transform) {
+                var regexTransform = /translateX\((\d+)?.\w+\).+translateY\((\d+)?.\w+\)/;
+                var match = child.element.style.transform.match(regexTransform);
+                if (match && match[1] && match[2])
+                    coords = [parseInt(match[1]), parseInt(match[2])];
+            }
+            if (_this.positionAnimationEnabled) {
+                var animation = popmotion_1.spring(__assign({ from: __assign({}, from, { x: coords[0], y: coords[1] }), to: __assign({}, to, { x: x, y: y }) }, _this.springProperties));
                 if (child.animationStop)
                     child.animationStop.stop();
-                child.animationStop = animation.start(function (v) { return (child.style.transform = v[0]); });
+                animation.start(function (v) { return child.styler.set(v); });
             }
-            else {
-                child.style.transform = transform;
-            }
+            // } else {
+            //   child.element.style.transform = transform;
+            // }
+            child.x = x;
+            child.y = y;
             child.firstRender = false;
         });
-        this.container.style.height = GridWall.getMaxHeight(this.columnsHeight) + 'px';
+        this.container.style.height = Tiles.getMaxHeight(this.columnsHeight) + 'px';
         this.setChildrenHeight();
     };
-    GridWall.prototype.resize = function (containerWidthInPx) {
+    Tiles.prototype.resize = function (containerWidthInPx) {
         if (!containerWidthInPx && !Number.isNaN(containerWidthInPx)) {
             throw new Error('Width must be a number and more than 0');
         }
@@ -262,7 +296,7 @@ var GridWall = /** @class */ (function () {
         this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
         this.reflow();
     };
-    GridWall.prototype.handleChildrenMutation = function (mutations, callback) {
+    Tiles.prototype.handleChildrenMutation = function (mutations, callback) {
         var _this = this;
         mutations.forEach(function (mutation) {
             var elem = mutation.target;
@@ -277,21 +311,23 @@ var GridWall = /** @class */ (function () {
         if (callback && typeof callback === 'function')
             callback();
     };
-    GridWall.prototype.handleContainerMutation = function (mutations, callback) {
+    Tiles.prototype.handleContainerMutation = function (mutations, callback) {
         var _this = this;
         mutations.forEach(function (mutation) {
             if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(function (child) {
-                    if (child instanceof HTMLElement) {
-                        GridWall.setWidth(child, _this.childrenWidth);
-                        child.style.transform = 'translate(0px, 0px)';
-                        _this.setChildId(child);
-                        _this._addChild(child);
+                mutation.addedNodes.forEach(function (elem) {
+                    if (elem instanceof HTMLElement) {
+                        var tile = new Tile(elem);
+                        Tiles.setWidth(tile, _this.childrenWidth);
+                        tile.element.style.transform = 'translateX(0px) translateY(0px)';
+                        _this.setChildId(tile);
+                        _this._addChild(tile);
                     }
                 });
-                mutation.removedNodes.forEach(function (child) {
-                    if (child instanceof HTMLElement) {
-                        _this._removeChild(child);
+                mutation.removedNodes.forEach(function (elem) {
+                    if (elem instanceof HTMLElement) {
+                        var tile = new Tile(elem);
+                        _this._removeChild(tile);
                     }
                 });
                 // this.children = this.getChildren();
@@ -301,6 +337,6 @@ var GridWall = /** @class */ (function () {
         if (callback && typeof callback === 'function')
             callback();
     };
-    return GridWall;
+    return Tiles;
 }());
-exports.default = GridWall;
+exports.default = Tiles;

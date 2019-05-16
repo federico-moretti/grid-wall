@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "popmotion": "^8.6.8",
-    "rollup-plugin-replace": "^2.2.0"
+    "rollup-plugin-replace": "^2.2.0",
+    "stylefire": "^4.1.4"
   }
 }
