@@ -20,6 +20,7 @@ type AnimationTypes = 'spring' | 'tween';
 interface Animations {
   //types: AnimationTypes[];
   // properties: string[];
+  translate?: boolean;
   from?: { [key: string]: number | string };
   to?: { [key: string]: number | string };
 }
@@ -31,7 +32,9 @@ interface Animations {
 // }
 
 class Tile {
+  id: number;
   onEnterAnimations: Animations;
+  onChangeAnimations: Animations;
   animations?: Animations;
   animationStop?: ColdSubscription;
   x: number;
@@ -40,13 +43,18 @@ class Tile {
   element: HTMLElement;
   styler: Styler;
 
-  constructor(element: HTMLElement) {
+  constructor({ element, id }: { element: HTMLElement; id: number }) {
+    this.id = id;
     this.element = element;
     this.styler = styler(element);
     this.firstRender = true;
     this.x = 0;
     this.y = 0;
     this.onEnterAnimations = { from: {}, to: {} };
+    this.onChangeAnimations = { from: {}, to: {} };
+
+    this.element.style.transform = 'translateX(0px) translateY(0px)';
+    this.element.setAttribute('data-gw-id', id.toString());
   }
 }
 
@@ -66,9 +74,8 @@ export default class Tiles {
   containerClassName: string;
   springProperties: { stiffness: number; damping: number; mass: number };
   onEnter: Animations;
-  onChange?: Animations;
+  onChange: Animations;
   onExit: Animations;
-  positionAnimationEnabled: boolean;
 
   constructor(params: GridWallParameters) {
     if (!params) throw new Error('Missing mandatory parameters!');
@@ -81,10 +88,11 @@ export default class Tiles {
       onEnter = {
         // types: ['tween'],
         // properties: ['opacity', 'scale'],
+        translate: false,
         from: { opacity: 0, scale: 0.5 },
         to: { opacity: 1, scale: 1 },
       } as Animations,
-      // onChange = { types: ['spring'], properties: ['position'] } as Animations,
+      onChange = { translate: true } as Animations,
       onExit = { types: ['tween'], from: { opacity: 1 }, to: { opacity: 0 } } as Animations,
     } = params;
     this.missingParameter({ container, childrenWidthInPx });
@@ -99,8 +107,7 @@ export default class Tiles {
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
     this.containerClassName = 'gw-container';
     this.onEnter = onEnter;
-    // this.onChange = onChange;
-    this.positionAnimationEnabled = this.isPositionAnimationEnabled();
+    this.onChange = onChange;
     this.onExit = onExit;
     this.springProperties = { stiffness: 120, damping: 14, mass: 1 };
 
@@ -233,7 +240,7 @@ export default class Tiles {
     if (this.container.children.length > 0) {
       Array.from(this.container.children).forEach(child => {
         if (child instanceof HTMLElement) {
-          const tile = new Tile(child);
+          const tile = new Tile({ element: child, id: this.childLastId + 1 });
           tile.firstRender = true;
           tile.element.style.transform = 'translateX(0px) translateY(0px)';
           this.setChildId(tile);
@@ -245,21 +252,12 @@ export default class Tiles {
   }
 
   private _addChild(child: Tile): void {
-    // const animation = spring({
-    //   from: this.onEnter.from,
-    //   to: this.onEnter.to,
-    //   ...this.springProperties,
-    // });
-    // animation.start((v: any) => child.styler.set(v));
-
-    const elem = child as Tile;
-    elem.onEnterAnimations = { from: this.onEnter.from, to: this.onEnter.to };
-    elem.firstRender = true;
+    this.childLastId = child.id;
     this.children.push(child);
   }
 
-  private _removeChild(child: Tile): void {
-    const id = child.element.getAttribute('data-gw-id');
+  private _removeChild(element: HTMLElement): void {
+    const id = element.getAttribute('data-gw-id');
     this.children = this.children.filter(c => c.element.getAttribute('data-gw-id') !== id);
   }
 
@@ -328,39 +326,69 @@ export default class Tiles {
         ? this.columnsHeight[column] + child.element.offsetHeight
         : child.element.offsetHeight;
 
-      let from = {};
-      let to = {};
-      if (child.firstRender) {
-        from = { ...child.onEnterAnimations.from };
-        to = { ...child.onEnterAnimations.to };
-      }
+      this.moveChild({ child, x, y });
 
-      let coords = [0, 0];
-      if (child.element.style.transform) {
-        const regexTransform = /translateX\((\d+)?.\w+\).+translateY\((\d+)?.\w+\)/;
-        const match = child.element.style.transform.match(regexTransform);
-        if (match && match[1] && match[2]) coords = [parseInt(match[1]), parseInt(match[2])];
-      }
-
-      if (this.positionAnimationEnabled) {
-        const animation = spring({
-          from: { ...from, x: coords[0], y: coords[1] },
-          to: { ...to, x, y },
-          ...this.springProperties,
-        });
-
-        if (child.animationStop) child.animationStop.stop();
-        animation.start((v: any) => child.styler.set(v));
-      }
-      // } else {
-      //   child.element.style.transform = transform;
-      // }
       child.x = x;
       child.y = y;
       child.firstRender = false;
     });
     this.container.style.height = Tiles.getMaxHeight(this.columnsHeight) + 'px';
     this.setChildrenHeight();
+  }
+
+  moveChild({ child, x, y }: { child: Tile; x: number; y: number }) {
+    // add animations
+    // check if can translate
+    // if did not animate translate, translate
+    // animate all
+    let animation: Action | null = null;
+    let from = {};
+    let to = {};
+    let fromTranslate = {};
+    let toTranslate = {};
+
+    if (child.firstRender) {
+      from = { ...this.onEnter.from };
+      to = { ...this.onEnter.to };
+    } else {
+      from = { ...this.onChange.from };
+      to = { ...this.onChange.to };
+    }
+
+    if (
+      (this.onChange.translate && !child.firstRender) ||
+      (this.onEnter.translate && child.firstRender)
+    ) {
+      if (x !== child.x || y !== child.y) {
+        let oldCoords = { x: 0, y: 0 };
+        if (child.element.style.transform) {
+          const regexTransform = /translateX\((-?\d+)?.\w+\).+translateY\((-?\d+)?.\w+\)/;
+          const match = child.element.style.transform.match(regexTransform);
+          if (match && match[1] && match[2]) {
+            oldCoords.x = parseInt(match[1]);
+            oldCoords.y = parseInt(match[2]);
+          }
+        }
+        fromTranslate = { x: oldCoords.x, y: oldCoords.y };
+        toTranslate = { x, y };
+      }
+    } else {
+      child.styler.set({ x, y });
+    }
+
+    from = { ...from, ...fromTranslate };
+    to = { ...to, ...toTranslate };
+
+    if (Object.keys(from).length > 0 && Object.keys(to).length > 0) {
+      animation = spring({
+        from,
+        to,
+        ...this.springProperties,
+      });
+
+      if (child.animationStop) child.animationStop.stop();
+      animation.start((v: any) => child.styler.set(v));
+    }
   }
 
   resize(containerWidthInPx: number): void {
@@ -392,20 +420,17 @@ export default class Tiles {
   handleContainerMutation(mutations: MutationRecord[], callback?: () => void): void {
     mutations.forEach(mutation => {
       if (mutation.type === 'childList') {
-        mutation.addedNodes.forEach(elem => {
-          if (elem instanceof HTMLElement) {
-            const tile = new Tile(elem);
+        mutation.addedNodes.forEach(element => {
+          if (element instanceof HTMLElement) {
+            const tile = new Tile({ element, id: this.childLastId + 1 });
             Tiles.setWidth(tile, this.childrenWidth);
-            tile.element.style.transform = 'translateX(0px) translateY(0px)';
-            this.setChildId(tile);
             this._addChild(tile);
           }
         });
 
         mutation.removedNodes.forEach(elem => {
           if (elem instanceof HTMLElement) {
-            const tile = new Tile(elem);
-            this._removeChild(tile);
+            this._removeChild(elem);
           }
         });
         // this.children = this.getChildren();

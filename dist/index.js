@@ -19,13 +19,18 @@ var stylefire_1 = require("stylefire");
 //   firstRender?: boolean;
 // }
 var Tile = /** @class */ (function () {
-    function Tile(element) {
+    function Tile(_a) {
+        var element = _a.element, id = _a.id;
+        this.id = id;
         this.element = element;
         this.styler = stylefire_1.default(element);
         this.firstRender = true;
         this.x = 0;
         this.y = 0;
         this.onEnterAnimations = { from: {}, to: {} };
+        this.onChangeAnimations = { from: {}, to: {} };
+        this.element.style.transform = 'translateX(0px) translateY(0px)';
+        this.element.setAttribute('data-gw-id', id.toString());
     }
     return Tile;
 }());
@@ -43,13 +48,10 @@ var Tiles = /** @class */ (function () {
         var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, _a = params.onEnter, onEnter = _a === void 0 ? {
             // types: ['tween'],
             // properties: ['opacity', 'scale'],
+            translate: false,
             from: { opacity: 0, scale: 0.5 },
             to: { opacity: 1, scale: 1 },
-        } : _a, 
-        // onChange = { types: ['spring'], properties: ['position'] } as Animations,
-        _b = params.onExit, 
-        // onChange = { types: ['spring'], properties: ['position'] } as Animations,
-        onExit = _b === void 0 ? { types: ['tween'], from: { opacity: 1 }, to: { opacity: 0 } } : _b;
+        } : _a, _b = params.onChange, onChange = _b === void 0 ? { translate: true } : _b, _c = params.onExit, onExit = _c === void 0 ? { types: ['tween'], from: { opacity: 1 }, to: { opacity: 0 } } : _c;
         this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
         this.container = container;
         this.childrenWidth = childrenWidthInPx;
@@ -61,8 +63,7 @@ var Tiles = /** @class */ (function () {
         this.resizeDebounceInMs = resizeDebounceInMs || 100;
         this.containerClassName = 'gw-container';
         this.onEnter = onEnter;
-        // this.onChange = onChange;
-        this.positionAnimationEnabled = this.isPositionAnimationEnabled();
+        this.onChange = onChange;
         this.onExit = onExit;
         this.springProperties = { stiffness: 120, damping: 14, mass: 1 };
         // we have to apply styles to DOM before doing any calculation
@@ -179,7 +180,7 @@ var Tiles = /** @class */ (function () {
         if (this.container.children.length > 0) {
             Array.from(this.container.children).forEach(function (child) {
                 if (child instanceof HTMLElement) {
-                    var tile = new Tile(child);
+                    var tile = new Tile({ element: child, id: _this.childLastId + 1 });
                     tile.firstRender = true;
                     tile.element.style.transform = 'translateX(0px) translateY(0px)';
                     _this.setChildId(tile);
@@ -190,19 +191,11 @@ var Tiles = /** @class */ (function () {
         return children;
     };
     Tiles.prototype._addChild = function (child) {
-        // const animation = spring({
-        //   from: this.onEnter.from,
-        //   to: this.onEnter.to,
-        //   ...this.springProperties,
-        // });
-        // animation.start((v: any) => child.styler.set(v));
-        var elem = child;
-        elem.onEnterAnimations = { from: this.onEnter.from, to: this.onEnter.to };
-        elem.firstRender = true;
+        this.childLastId = child.id;
         this.children.push(child);
     };
-    Tiles.prototype._removeChild = function (child) {
-        var id = child.element.getAttribute('data-gw-id');
+    Tiles.prototype._removeChild = function (element) {
+        var id = element.getAttribute('data-gw-id');
         this.children = this.children.filter(function (c) { return c.element.getAttribute('data-gw-id') !== id; });
     };
     Tiles.prototype.setChildrenWidth = function () {
@@ -259,34 +252,61 @@ var Tiles = /** @class */ (function () {
             _this.columnsHeight[column] = Number.isInteger(_this.columnsHeight[column])
                 ? _this.columnsHeight[column] + child.element.offsetHeight
                 : child.element.offsetHeight;
-            var from = {};
-            var to = {};
-            if (child.firstRender) {
-                from = __assign({}, child.onEnterAnimations.from);
-                to = __assign({}, child.onEnterAnimations.to);
-            }
-            var coords = [0, 0];
-            if (child.element.style.transform) {
-                var regexTransform = /translateX\((\d+)?.\w+\).+translateY\((\d+)?.\w+\)/;
-                var match = child.element.style.transform.match(regexTransform);
-                if (match && match[1] && match[2])
-                    coords = [parseInt(match[1]), parseInt(match[2])];
-            }
-            if (_this.positionAnimationEnabled) {
-                var animation = popmotion_1.spring(__assign({ from: __assign({}, from, { x: coords[0], y: coords[1] }), to: __assign({}, to, { x: x, y: y }) }, _this.springProperties));
-                if (child.animationStop)
-                    child.animationStop.stop();
-                animation.start(function (v) { return child.styler.set(v); });
-            }
-            // } else {
-            //   child.element.style.transform = transform;
-            // }
+            _this.moveChild({ child: child, x: x, y: y });
             child.x = x;
             child.y = y;
             child.firstRender = false;
         });
         this.container.style.height = Tiles.getMaxHeight(this.columnsHeight) + 'px';
         this.setChildrenHeight();
+    };
+    Tiles.prototype.moveChild = function (_a) {
+        var child = _a.child, x = _a.x, y = _a.y;
+        // add animations
+        // check if can translate
+        // if did not animate translate, translate
+        // animate all
+        var animation = null;
+        var from = {};
+        var to = {};
+        var fromTranslate = {};
+        var toTranslate = {};
+        if (child.firstRender) {
+            from = __assign({}, this.onEnter.from);
+            to = __assign({}, this.onEnter.to);
+        }
+        else {
+            from = __assign({}, this.onChange.from);
+            to = __assign({}, this.onChange.to);
+        }
+        if ((this.onChange.translate && !child.firstRender) ||
+            (this.onEnter.translate && child.firstRender)) {
+            if (x !== child.x || y !== child.y) {
+                var oldCoords = { x: 0, y: 0 };
+                if (child.element.style.transform) {
+                    var regexTransform = /translateX\((-?\d+)?.\w+\).+translateY\((-?\d+)?.\w+\)/;
+                    var match = child.element.style.transform.match(regexTransform);
+                    if (match && match[1] && match[2]) {
+                        oldCoords.x = parseInt(match[1]);
+                        oldCoords.y = parseInt(match[2]);
+                    }
+                }
+                fromTranslate = { x: oldCoords.x, y: oldCoords.y };
+                toTranslate = { x: x, y: y };
+            }
+        }
+        else {
+            child.styler.set({ x: x, y: y });
+        }
+        from = __assign({}, from, fromTranslate);
+        to = __assign({}, to, toTranslate);
+        if (Object.keys(from).length > 0 && Object.keys(to).length > 0) {
+            animation = popmotion_1.spring(__assign({ from: from,
+                to: to }, this.springProperties));
+            if (child.animationStop)
+                child.animationStop.stop();
+            animation.start(function (v) { return child.styler.set(v); });
+        }
     };
     Tiles.prototype.resize = function (containerWidthInPx) {
         if (!containerWidthInPx && !Number.isNaN(containerWidthInPx)) {
@@ -315,19 +335,16 @@ var Tiles = /** @class */ (function () {
         var _this = this;
         mutations.forEach(function (mutation) {
             if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(function (elem) {
-                    if (elem instanceof HTMLElement) {
-                        var tile = new Tile(elem);
+                mutation.addedNodes.forEach(function (element) {
+                    if (element instanceof HTMLElement) {
+                        var tile = new Tile({ element: element, id: _this.childLastId + 1 });
                         Tiles.setWidth(tile, _this.childrenWidth);
-                        tile.element.style.transform = 'translateX(0px) translateY(0px)';
-                        _this.setChildId(tile);
                         _this._addChild(tile);
                     }
                 });
                 mutation.removedNodes.forEach(function (elem) {
                     if (elem instanceof HTMLElement) {
-                        var tile = new Tile(elem);
-                        _this._removeChild(tile);
+                        _this._removeChild(elem);
                     }
                 });
                 // this.children = this.getChildren();

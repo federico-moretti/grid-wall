@@ -99,16 +99,15 @@ function Tile(props) {
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     border: 'none',
     color: 'white',
-    fontSize: '20px',
+    fontSize: 20,
     outline: 'none',
+    padding: 10,
   };
 
   return (
     <div>
-      <div style={props.style}>
-        <button style={style} onClick={props.remove}>
-          remove
-        </button>
+      <div onClick={props.remove} style={props.style}>
+        <p style={style}>remove</p>
       </div>
     </div>
   );

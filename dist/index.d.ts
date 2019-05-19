@@ -14,6 +14,7 @@ interface GridWallParameters {
     afterStyle?: CSSStyleDeclaration;
 }
 interface Animations {
+    translate?: boolean;
     from?: {
         [key: string]: number | string;
     };
@@ -22,7 +23,9 @@ interface Animations {
     };
 }
 declare class Tile {
+    id: number;
     onEnterAnimations: Animations;
+    onChangeAnimations: Animations;
     animations?: Animations;
     animationStop?: ColdSubscription;
     x: number;
@@ -30,7 +33,10 @@ declare class Tile {
     firstRender: boolean;
     element: HTMLElement;
     styler: Styler;
-    constructor(element: HTMLElement);
+    constructor({ element, id }: {
+        element: HTMLElement;
+        id: number;
+    });
 }
 export default class Tiles {
     container: HTMLElement;
@@ -54,9 +60,8 @@ export default class Tiles {
         mass: number;
     };
     onEnter: Animations;
-    onChange?: Animations;
+    onChange: Animations;
     onExit: Animations;
-    positionAnimationEnabled: boolean;
     constructor(params: GridWallParameters);
     missingParameter(params: {
         [name: string]: any;
@@ -85,6 +90,11 @@ export default class Tiles {
     static getMaxHeight(columnsHeight: number[]): number;
     addAfterStyle: (event: TransitionEvent) => void;
     reflow(): void;
+    moveChild({ child, x, y }: {
+        child: Tile;
+        x: number;
+        y: number;
+    }): void;
     resize(containerWidthInPx: number): void;
     handleChildrenMutation(mutations: MutationRecord[], callback?: () => void): void;
     handleContainerMutation(mutations: MutationRecord[], callback?: () => void): void;

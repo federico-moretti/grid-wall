@@ -41,11 +41,11 @@ describe('Reflow Grid', () => {
     const item3 = document.getElementById('i3');
     const item4 = document.getElementById('i4');
     const item5 = document.getElementById('i5');
-    expect(item1.style.transform).toBe('translate(0px, 0px)');
-    expect(item2.style.transform).toBe('translate(100px, 0px)');
-    expect(item3.style.transform).toBe('translate(200px, 0px)');
-    expect(item4.style.transform).toBe('translate(300px, 0px)');
-    expect(item5.style.transform).toBe('translate(100px, 100px)');
+    expect(item1.style.transform).toBe('translateX(0px) translateY(0px)');
+    expect(item2.style.transform).toBe('translateX(100px) translateY(0px)');
+    expect(item3.style.transform).toBe('translateX(200px) translateY(0px)');
+    expect(item4.style.transform).toBe('translateX(300px) translateY(0px)');
+    expect(item5.style.transform).toBe('translateX(100px) translateY(100px)');
   });
 
   it('should change to the lower column', () => {
@@ -54,7 +54,7 @@ describe('Reflow Grid', () => {
     item2.style.height = '180px';
     gw.reflow();
     const item5 = document.getElementById('i5');
-    expect(item5.style.transform).toBe('translate(300px, 150px)');
+    expect(item5.style.transform).toBe('translateX(300px) translateY(150px)');
   });
 
   it('should change to the lower column on the left', () => {
@@ -63,7 +63,7 @@ describe('Reflow Grid', () => {
     item2.style.height = '150px';
     gw.reflow();
     const item5 = document.getElementById('i5');
-    expect(item5.style.transform).toBe('translate(100px, 150px)');
+    expect(item5.style.transform).toBe('translateX(100px) translateY(150px)');
   });
 
   it('should add classes to the DOM', () => {
