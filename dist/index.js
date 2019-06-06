@@ -1,4 +1,5 @@
 "use strict";
+// TODO: we may use parallel() to use multiple animation type, like tween and spring
 var __assign = (this && this.__assign) || function () {
     __assign = Object.assign || function(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -13,11 +14,19 @@ var __assign = (this && this.__assign) || function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var popmotion_1 = require("popmotion");
 var stylefire_1 = require("stylefire");
-// interface ChildElement extends HTMLElement {
-//   animations?: Action[];
-//   animationStop?: ColdSubscription;
-//   firstRender?: boolean;
-// }
+var defaultAnimations = {
+    onEnter: {
+        translate: false,
+        from: { opacity: 0, scale: 0.5 },
+        to: { opacity: 1, scale: 1 },
+    },
+    onChange: { translate: true },
+    onExit: {
+        from: { opacity: 1, scale: 1 },
+        to: { opacity: 0, scale: 0.75 },
+        duration: 200,
+    },
+};
 var Tile = /** @class */ (function () {
     function Tile(_a) {
         var element = _a.element, id = _a.id;
@@ -29,9 +38,14 @@ var Tile = /** @class */ (function () {
         this.y = 0;
         this.onEnterAnimations = { from: {}, to: {} };
         this.onChangeAnimations = { from: {}, to: {} };
+        this.onExitAnimations = { from: {}, to: {} };
         this.element.style.transform = 'translateX(0px) translateY(0px)';
         this.element.setAttribute('data-gw-id', id.toString());
     }
+    Tile.prototype.setCoords = function (x, y) {
+        this.x = x;
+        this.y = y;
+    };
     return Tile;
 }());
 var Tiles = /** @class */ (function () {
@@ -43,15 +57,10 @@ var Tiles = /** @class */ (function () {
                 event.target.removeEventListener('transitionend', _this.addAfterStyle, true);
             }
         };
+        // debugger;
         if (!params)
             throw new Error('Missing mandatory parameters!');
-        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, _a = params.onEnter, onEnter = _a === void 0 ? {
-            // types: ['tween'],
-            // properties: ['opacity', 'scale'],
-            translate: false,
-            from: { opacity: 0, scale: 0.5 },
-            to: { opacity: 1, scale: 1 },
-        } : _a, _b = params.onChange, onChange = _b === void 0 ? { translate: true } : _b, _c = params.onExit, onExit = _c === void 0 ? { types: ['tween'], from: { opacity: 1 }, to: { opacity: 0 } } : _c;
+        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, onEnter = params.onEnter, onChange = params.onChange, onExit = params.onExit, _a = params.springProperties, springProperties = _a === void 0 ? { stiffness: 120, damping: 14, mass: 1 } : _a;
         this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
         this.container = container;
         this.childrenWidth = childrenWidthInPx;
@@ -62,10 +71,10 @@ var Tiles = /** @class */ (function () {
         this.enableResize = enableResize || false;
         this.resizeDebounceInMs = resizeDebounceInMs || 100;
         this.containerClassName = 'gw-container';
-        this.onEnter = onEnter;
-        this.onChange = onChange;
-        this.onExit = onExit;
-        this.springProperties = { stiffness: 120, damping: 14, mass: 1 };
+        this.onEnter = typeof onEnter === 'undefined' ? defaultAnimations.onEnter : null;
+        this.onChange = typeof onChange === 'undefined' ? defaultAnimations.onChange : null;
+        this.onExit = typeof onExit === 'undefined' ? defaultAnimations.onExit : null;
+        this.springProperties = springProperties;
         // we have to apply styles to DOM before doing any calculation
         this.addStyleToDOM();
         this.children = this.getInitialChildren();
@@ -74,12 +83,10 @@ var Tiles = /** @class */ (function () {
         this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
         this.setChildrenWidth();
         this.setChildrenHeight();
-        // this.setInitialChildrenTransition();
         this.listenToResize();
         this.marginWidth = this.calculateMargin();
         this.addMutationObserverToContainer();
         this.addMutationObserverToChildren();
-        // spring({ from: 0, to: 110 }).start((v: number) => console.log(v));
         this.reflow();
     }
     Tiles.prototype.missingParameter = function (params) {
@@ -136,10 +143,6 @@ var Tiles = /** @class */ (function () {
             _this.childrenHeights[id] = child.element.offsetHeight;
         });
     };
-    Tiles.prototype.isPositionAnimationEnabled = function () {
-        return true;
-        // return Boolean(this.onChange.properties.find(property => property === 'position'));
-    };
     Tiles.prototype.resetColumnsHeight = function () {
         this.columnsHeight = [];
     };
@@ -163,17 +166,6 @@ var Tiles = /** @class */ (function () {
     Tiles.setWidth = function (element, width) {
         element.element.style.width = width + "px";
     };
-    Tiles.addStyles = function (element, styles) {
-        for (var property in styles) {
-            if (element.element.style.hasOwnProperty(property)) {
-                element.element.style[property] = styles[property];
-            }
-        }
-    };
-    Tiles.prototype.removeChild = function (index, callback) {
-        // remove children with animation
-        // on animation end do callback
-    };
     Tiles.prototype.getInitialChildren = function () {
         var _this = this;
         var children = [];
@@ -193,6 +185,38 @@ var Tiles = /** @class */ (function () {
     Tiles.prototype._addChild = function (child) {
         this.childLastId = child.id;
         this.children.push(child);
+    };
+    // after a child is removed, we append it back
+    // just to animate it out, then remove it for real and reflow
+    // this feels kinda hacky but it works
+    Tiles.prototype._handleRemoveChild = function (element) {
+        var _this = this;
+        if (this.onExit) {
+            element.setAttribute('data-gw-removing', 'true');
+            this.container.appendChild(element);
+            var from = __assign({}, this.onExit.from);
+            var to = __assign({}, this.onExit.to);
+            var duration = this.onExit.duration || 150;
+            if (Object.keys(from).length > 0 && Object.keys(to).length > 0) {
+                var animation = popmotion_1.tween({
+                    from: from,
+                    to: to,
+                    duration: duration,
+                });
+                animation.start({
+                    update: function (v) { return stylefire_1.default(element).set(v); },
+                    complete: function () {
+                        element.setAttribute('data-gw-removing', 'false');
+                        element.remove();
+                        _this._removeChild(element);
+                        _this.reflow();
+                    },
+                });
+            }
+        }
+        else {
+            this._removeChild(element);
+        }
     };
     Tiles.prototype._removeChild = function (element) {
         var id = element.getAttribute('data-gw-id');
@@ -252,35 +276,36 @@ var Tiles = /** @class */ (function () {
             _this.columnsHeight[column] = Number.isInteger(_this.columnsHeight[column])
                 ? _this.columnsHeight[column] + child.element.offsetHeight
                 : child.element.offsetHeight;
+            // TODO: move logic to Tile
+            // child.move(x, y)
             _this.moveChild({ child: child, x: x, y: y });
-            child.x = x;
-            child.y = y;
-            child.firstRender = false;
+            child.setCoords(x, y);
+            // child.firstRender = false;
         });
         this.container.style.height = Tiles.getMaxHeight(this.columnsHeight) + 'px';
         this.setChildrenHeight();
     };
     Tiles.prototype.moveChild = function (_a) {
         var child = _a.child, x = _a.x, y = _a.y;
-        // add animations
-        // check if can translate
-        // if did not animate translate, translate
-        // animate all
         var animation = null;
         var from = {};
         var to = {};
         var fromTranslate = {};
         var toTranslate = {};
-        if (child.firstRender) {
+        if (child.firstRender && this.onEnter) {
             from = __assign({}, this.onEnter.from);
             to = __assign({}, this.onEnter.to);
         }
-        else {
+        else if (this.onChange) {
             from = __assign({}, this.onChange.from);
             to = __assign({}, this.onChange.to);
         }
-        if ((this.onChange.translate && !child.firstRender) ||
-            (this.onEnter.translate && child.firstRender)) {
+        if ((this.onChange && this.onChange.translate && !child.firstRender) ||
+            (this.onEnter && this.onEnter.translate && child.firstRender)) {
+            // if we are moving the child to a new position
+            // get the new position and restart the animation
+            // else we leave x and y null so it ends the running animation
+            // without starting a new one
             if (x !== child.x || y !== child.y) {
                 var oldCoords = { x: 0, y: 0 };
                 if (child.element.style.transform) {
@@ -296,16 +321,23 @@ var Tiles = /** @class */ (function () {
             }
         }
         else {
+            // console.log('set', { x, y });
             child.styler.set({ x: x, y: y });
+            // console.log(child.element.style.transform);
         }
         from = __assign({}, from, fromTranslate);
         to = __assign({}, to, toTranslate);
         if (Object.keys(from).length > 0 && Object.keys(to).length > 0) {
             animation = popmotion_1.spring(__assign({ from: from,
                 to: to }, this.springProperties));
-            if (child.animationStop)
+            if (child.animationStop && !child.firstRender)
                 child.animationStop.stop();
-            animation.start(function (v) { return child.styler.set(v); });
+            if (x !== child.x || y !== child.y) {
+                child.animationStop = animation.start({
+                    update: function (v) { return child.styler.set(v); },
+                    complete: function () { return (child.firstRender = false); },
+                });
+            }
         }
     };
     Tiles.prototype.resize = function (containerWidthInPx) {
@@ -337,17 +369,26 @@ var Tiles = /** @class */ (function () {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(function (element) {
                     if (element instanceof HTMLElement) {
+                        if (element.getAttribute('data-gw-removing') === 'true') {
+                            if (callback && typeof callback === 'function')
+                                callback();
+                            return;
+                        }
                         var tile = new Tile({ element: element, id: _this.childLastId + 1 });
                         Tiles.setWidth(tile, _this.childrenWidth);
                         _this._addChild(tile);
                     }
                 });
-                mutation.removedNodes.forEach(function (elem) {
-                    if (elem instanceof HTMLElement) {
-                        _this._removeChild(elem);
+                mutation.removedNodes.forEach(function (element) {
+                    if (element instanceof HTMLElement) {
+                        if (element.getAttribute('data-gw-removing') === 'false') {
+                            if (callback && typeof callback === 'function')
+                                callback();
+                            return;
+                        }
+                        _this._handleRemoveChild(element);
                     }
                 });
-                // this.children = this.getChildren();
                 _this.reflow();
             }
         });

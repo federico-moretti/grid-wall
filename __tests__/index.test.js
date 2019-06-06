@@ -15,7 +15,15 @@ function createContainerWithFiveChildren({ width = '500px', margin = 'center' } 
   </div>`;
   const container = document.getElementById(id);
   if (container) {
-    gw = new GridWall({ container, childrenWidthInPx: 100, enableResize: true, margin });
+    gw = new GridWall({
+      container,
+      childrenWidthInPx: 100,
+      enableResize: true,
+      margin,
+      onEnter: null,
+      onChange: null,
+      onExit: null,
+    });
   }
 }
 
@@ -36,16 +44,11 @@ describe('Reflow Grid', () => {
 
   it('should apply correct transform properties', () => {
     createContainerWithFiveChildren();
-    const item1 = document.getElementById('i1');
-    const item2 = document.getElementById('i2');
-    const item3 = document.getElementById('i3');
-    const item4 = document.getElementById('i4');
-    const item5 = document.getElementById('i5');
-    expect(item1.style.transform).toBe('translateX(0px) translateY(0px)');
-    expect(item2.style.transform).toBe('translateX(100px) translateY(0px)');
-    expect(item3.style.transform).toBe('translateX(200px) translateY(0px)');
-    expect(item4.style.transform).toBe('translateX(300px) translateY(0px)');
-    expect(item5.style.transform).toBe('translateX(100px) translateY(100px)');
+    expect([gw.children[0].x, gw.children[0].y]).toEqual([0, 0]);
+    expect([gw.children[1].x, gw.children[1].y]).toEqual([100, 0]);
+    expect([gw.children[2].x, gw.children[2].y]).toEqual([200, 0]);
+    expect([gw.children[3].x, gw.children[3].y]).toEqual([300, 0]);
+    expect([gw.children[4].x, gw.children[4].y]).toEqual([100, 100]);
   });
 
   it('should change to the lower column', () => {
@@ -53,8 +56,7 @@ describe('Reflow Grid', () => {
     const item2 = document.getElementById('i2');
     item2.style.height = '180px';
     gw.reflow();
-    const item5 = document.getElementById('i5');
-    expect(item5.style.transform).toBe('translateX(300px) translateY(150px)');
+    expect([gw.children[4].x, gw.children[4].y]).toEqual([300, 150]);
   });
 
   it('should change to the lower column on the left', () => {
@@ -62,8 +64,7 @@ describe('Reflow Grid', () => {
     const item2 = document.getElementById('i2');
     item2.style.height = '150px';
     gw.reflow();
-    const item5 = document.getElementById('i5');
-    expect(item5.style.transform).toBe('translateX(100px) translateY(150px)');
+    expect([gw.children[4].x, gw.children[4].y]).toEqual([100, 150]);
   });
 
   it('should add classes to the DOM', () => {
@@ -88,11 +89,11 @@ describe('Reflow Grid', () => {
   });
 
   it('should set new width to an element', () => {
-    const element = document.createElement('div');
-    element.style.width = '100px';
-    expect(element.style.width).toBe('100px');
-    GridWall.setWidth(element, 200);
-    expect(element.style.width).toBe('200px');
+    const tile = { element: document.createElement('div') };
+    tile.element.style.width = '100px';
+    expect(tile.element.style.width).toBe('100px');
+    GridWall.setWidth(tile, 200);
+    expect(tile.element.style.width).toBe('200px');
   });
 
   it('should track children height', () => {
@@ -208,7 +209,7 @@ describe('Reflow Grid', () => {
   it('should reflow after adding a children', () => {
     createContainerWithFiveChildren();
     const spyReflow = jest.spyOn(gw, 'reflow');
-    const spyGetChildren = jest.spyOn(gw, 'getChildren');
+    const spyAddChild = jest.spyOn(gw, '_addChild');
     const spySetWidth = jest.spyOn(GridWall, 'setWidth');
 
     const container = document.getElementById(id);
@@ -221,14 +222,38 @@ describe('Reflow Grid', () => {
       {
         type: 'childList',
         addedNodes: [element],
+        removedNodes: [],
       },
     ];
 
     gw.handleContainerMutation(mutations, () => {
       expect(spyReflow).toHaveBeenCalledTimes(1);
-      expect(spyGetChildren).toHaveBeenCalledTimes(1);
+      expect(spyAddChild).toHaveBeenCalledTimes(1);
       expect(spySetWidth).toHaveBeenCalledTimes(1);
       expect(element.style.width).toBe('100px');
+      expect(gw.children.length).toBe(6);
+    });
+  });
+
+  it('should reflow after removing a children', () => {
+    createContainerWithFiveChildren();
+    const spyReflow = jest.spyOn(gw, 'reflow');
+    const spyRemoveChild = jest.spyOn(gw, '_removeChild');
+
+    const element = document.getElementById('i1');
+
+    const mutations = [
+      {
+        type: 'childList',
+        addedNodes: [],
+        removedNodes: [element],
+      },
+    ];
+
+    gw.handleContainerMutation(mutations, () => {
+      expect(spyReflow).toHaveBeenCalledTimes(1);
+      expect(spyRemoveChild).toHaveBeenCalledTimes(1);
+      expect(gw.children.length).toBe(4);
     });
   });
 
@@ -267,32 +292,32 @@ describe('Reflow Grid', () => {
     expect(callback).toHaveBeenCalledTimes(1);
   });
 
-  it('should add styles', () => {
-    // mock html element cause jsdom mess up the styles property
-    const element = {
-      style: {
-        width: '10px',
-        transition: 'none',
-      },
-    };
+  // it('should add styles', () => {
+  //   // mock html element cause jsdom mess up the styles property
+  //   const element = {
+  //     style: {
+  //       width: '10px',
+  //       transition: 'none',
+  //     },
+  //   };
 
-    GridWall.addStyles(element, {
-      width: '100px',
-      transition: 'opacity 0.2s ease-in, transform 0.2s ease-in',
-    });
+  //   GridWall.addStyles(element, {
+  //     width: '100px',
+  //     transition: 'opacity 0.2s ease-in, transform 0.2s ease-in',
+  //   });
 
-    expect(element.style.width).toBe('100px');
-    expect(element.style.transition).toBe('opacity 0.2s ease-in, transform 0.2s ease-in');
-  });
+  //   expect(element.style.width).toBe('100px');
+  //   expect(element.style.transition).toBe('opacity 0.2s ease-in, transform 0.2s ease-in');
+  // });
 
-  it('should insert transitions in reflow', () => {
-    createContainerWithFiveChildren();
+  // it('should insert transitions in reflow', () => {
+  //   createContainerWithFiveChildren();
 
-    const spyAddStyles = jest.spyOn(GridWall, 'addStyles');
-    gw.reflow();
+  //   const spyAddStyles = jest.spyOn(GridWall, 'addStyles');
+  //   gw.reflow();
 
-    expect(spyAddStyles).toHaveBeenCalledTimes(5);
-  });
+  //   expect(spyAddStyles).toHaveBeenCalledTimes(5);
+  // });
 
   it('should add transition data attribute', () => {
     createContainerWithFiveChildren();

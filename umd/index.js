@@ -3038,7 +3038,710 @@
 		styler: index
 	});
 
+	/*! *****************************************************************************
+	Copyright (c) Microsoft Corporation. All rights reserved.
+	Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+	this file except in compliance with the License. You may obtain a copy of the
+	License at http://www.apache.org/licenses/LICENSE-2.0
+
+	THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+	KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+	WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+	MERCHANTABLITY OR NON-INFRINGEMENT.
+
+	See the Apache Version 2.0 License for specific language governing permissions
+	and limitations under the License.
+	***************************************************************************** */
+
+	var __assign$4 = function() {
+	    __assign$4 = Object.assign || function __assign(t) {
+	        for (var s, i = 1, n = arguments.length; i < n; i++) {
+	            s = arguments[i];
+	            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+	        }
+	        return t;
+	    };
+	    return __assign$4.apply(this, arguments);
+	};
+
+	var clamp$2 = function (min, max) { return function (v) {
+	    return Math.max(Math.min(v, max), min);
+	}; };
+	var sanitize$1 = function (v) { return (v % 1 ? Number(v.toFixed(5)) : v); };
+	var singleColorRegex = /^(#[0-9a-f]{3}|#(?:[0-9a-f]{2}){2,4}|(rgb|hsl)a?\((-?\d+%?[,\s]+){2,3}\s*[\d\.]+%?\))$/i;
+
+	var number$1 = {
+	    test: function (v) { return typeof v === 'number'; },
+	    parse: parseFloat,
+	    transform: function (v) { return v; }
+	};
+	var alpha$1 = __assign$4({}, number$1, { transform: clamp$2(0, 1) });
+	var scale$1 = __assign$4({}, number$1, { default: 1 });
+
+	var createUnitType$1 = function (unit) { return ({
+	    test: function (v) {
+	        return typeof v === 'string' && v.endsWith(unit) && v.split(' ').length === 1;
+	    },
+	    parse: parseFloat,
+	    transform: function (v) { return "" + v + unit; }
+	}); };
+	var degrees$1 = createUnitType$1('deg');
+	var percent$1 = createUnitType$1('%');
+	var px$1 = createUnitType$1('px');
+	var progressPercentage$1 = __assign$4({}, percent$1, { parse: function (v) { return percent$1.parse(v) / 100; }, transform: function (v) { return percent$1.transform(v * 100); } });
+
+	var getValueFromFunctionString$1 = function (value) {
+	    return value.substring(value.indexOf('(') + 1, value.lastIndexOf(')'));
+	};
+	var clampRgbUnit$1 = clamp$2(0, 255);
+	var isRgba$1 = function (v) { return v.red !== undefined; };
+	var isHsla$1 = function (v) { return v.hue !== undefined; };
+	var splitColorValues$1 = function (terms) {
+	    return function (v) {
+	        if (typeof v !== 'string')
+	            return v;
+	        var values = {};
+	        var valuesArray = getValueFromFunctionString$1(v).split(/,\s*/);
+	        for (var i = 0; i < 4; i++) {
+	            values[terms[i]] =
+	                valuesArray[i] !== undefined ? parseFloat(valuesArray[i]) : 1;
+	        }
+	        return values;
+	    };
+	};
+	var rgbaTemplate$1 = function (_a) {
+	    var red = _a.red, green = _a.green, blue = _a.blue, _b = _a.alpha, alpha$$1 = _b === void 0 ? 1 : _b;
+	    return "rgba(" + red + ", " + green + ", " + blue + ", " + alpha$$1 + ")";
+	};
+	var hslaTemplate$1 = function (_a) {
+	    var hue = _a.hue, saturation = _a.saturation, lightness = _a.lightness, _b = _a.alpha, alpha$$1 = _b === void 0 ? 1 : _b;
+	    return "hsla(" + hue + ", " + saturation + ", " + lightness + ", " + alpha$$1 + ")";
+	};
+	var rgbUnit$1 = __assign$4({}, number$1, { transform: function (v) { return Math.round(clampRgbUnit$1(v)); } });
+	function isColorString(color, colorType) {
+	    return color.startsWith(colorType) && singleColorRegex.test(color);
+	}
+	var rgba$1 = {
+	    test: function (v) { return (typeof v === 'string' ? isColorString(v, 'rgb') : isRgba$1(v)); },
+	    parse: splitColorValues$1(['red', 'green', 'blue', 'alpha']),
+	    transform: function (_a) {
+	        var red = _a.red, green = _a.green, blue = _a.blue, alpha$$1 = _a.alpha;
+	        return rgbaTemplate$1({
+	            red: rgbUnit$1.transform(red),
+	            green: rgbUnit$1.transform(green),
+	            blue: rgbUnit$1.transform(blue),
+	            alpha: sanitize$1(alpha$$1)
+	        });
+	    }
+	};
+	var hsla$1 = {
+	    test: function (v) { return (typeof v === 'string' ? isColorString(v, 'hsl') : isHsla$1(v)); },
+	    parse: splitColorValues$1(['hue', 'saturation', 'lightness', 'alpha']),
+	    transform: function (_a) {
+	        var hue = _a.hue, saturation = _a.saturation, lightness = _a.lightness, alpha$$1 = _a.alpha;
+	        return hslaTemplate$1({
+	            hue: Math.round(hue),
+	            saturation: percent$1.transform(sanitize$1(saturation)),
+	            lightness: percent$1.transform(sanitize$1(lightness)),
+	            alpha: sanitize$1(alpha$$1)
+	        });
+	    }
+	};
+	var hex$1 = __assign$4({}, rgba$1, { test: function (v) { return typeof v === 'string' && isColorString(v, '#'); }, parse: function (v) {
+	        var r = '';
+	        var g = '';
+	        var b = '';
+	        if (v.length > 4) {
+	            r = v.substr(1, 2);
+	            g = v.substr(3, 2);
+	            b = v.substr(5, 2);
+	        }
+	        else {
+	            r = v.substr(1, 1);
+	            g = v.substr(2, 1);
+	            b = v.substr(3, 1);
+	            r += r;
+	            g += g;
+	            b += b;
+	        }
+	        return {
+	            red: parseInt(r, 16),
+	            green: parseInt(g, 16),
+	            blue: parseInt(b, 16),
+	            alpha: 1
+	        };
+	    } });
+	var color$1 = {
+	    test: function (v) {
+	        return (typeof v === 'string' && singleColorRegex.test(v)) ||
+	            isRgba$1(v) ||
+	            isHsla$1(v);
+	    },
+	    parse: function (v) {
+	        if (rgba$1.test(v)) {
+	            return rgba$1.parse(v);
+	        }
+	        else if (hsla$1.test(v)) {
+	            return hsla$1.parse(v);
+	        }
+	        else if (hex$1.test(v)) {
+	            return hex$1.parse(v);
+	        }
+	        return v;
+	    },
+	    transform: function (v) {
+	        if (isRgba$1(v)) {
+	            return rgba$1.transform(v);
+	        }
+	        else if (isHsla$1(v)) {
+	            return hsla$1.transform(v);
+	        }
+	        return v;
+	    }
+	};
+
+	/*! *****************************************************************************
+	Copyright (c) Microsoft Corporation. All rights reserved.
+	Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+	this file except in compliance with the License. You may obtain a copy of the
+	License at http://www.apache.org/licenses/LICENSE-2.0
+
+	THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+	KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+	WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+	MERCHANTABLITY OR NON-INFRINGEMENT.
+
+	See the Apache Version 2.0 License for specific language governing permissions
+	and limitations under the License.
+	***************************************************************************** */
+
+	var __assign$5 = function () {
+	    __assign$5 = Object.assign || function __assign(t) {
+	        for (var s, i = 1, n = arguments.length; i < n; i++) {
+	            s = arguments[i];
+	            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+	        }
+	        return t;
+	    };
+	    return __assign$5.apply(this, arguments);
+	};
+
+	function __rest$2(s, e) {
+	    var t = {};
+	    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
+	    if (s != null && typeof Object.getOwnPropertySymbols === "function") for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) if (e.indexOf(p[i]) < 0) t[p[i]] = s[p[i]];
+	    return t;
+	}
+
+	var createStyler$1 = function (_a) {
+	    var onRead = _a.onRead,
+	        onRender = _a.onRender,
+	        _b = _a.uncachedValues,
+	        uncachedValues = _b === void 0 ? new Set() : _b,
+	        _c = _a.useCache,
+	        useCache = _c === void 0 ? true : _c;
+	    return function (_a) {
+	        if (_a === void 0) {
+	            _a = {};
+	        }
+	        var props = __rest$2(_a, []);
+	        var state = {};
+	        var changedValues = [];
+	        var hasChanged = false;
+	        function setValue(key, value) {
+	            if (key.startsWith('--')) {
+	                props.hasCSSVariable = true;
+	            }
+	            var currentValue = state[key];
+	            state[key] = value;
+	            if (state[key] === currentValue) return;
+	            if (changedValues.indexOf(key) === -1) {
+	                changedValues.push(key);
+	            }
+	            if (!hasChanged) {
+	                hasChanged = true;
+	                sync.render(styler.render);
+	            }
+	        }
+	        var styler = {
+	            get: function (key, forceRead) {
+	                if (forceRead === void 0) {
+	                    forceRead = false;
+	                }
+	                var useCached = !forceRead && useCache && !uncachedValues.has(key) && state[key] !== undefined;
+	                return useCached ? state[key] : onRead(key, props);
+	            },
+	            set: function (values, value) {
+	                if (typeof values === 'string') {
+	                    setValue(values, value);
+	                } else {
+	                    for (var key in values) {
+	                        setValue(key, values[key]);
+	                    }
+	                }
+	                return this;
+	            },
+	            render: function (forceRender) {
+	                if (forceRender === void 0) {
+	                    forceRender = false;
+	                }
+	                if (hasChanged || forceRender === true) {
+	                    onRender(state, props, changedValues);
+	                    hasChanged = false;
+	                    changedValues.length = 0;
+	                }
+	                return this;
+	            }
+	        };
+	        return styler;
+	    };
+	};
+
+	var CAMEL_CASE_PATTERN$1 = /([a-z])([A-Z])/g;
+	var REPLACE_TEMPLATE$1 = '$1-$2';
+	var camelToDash$1 = function (str) {
+	    return str.replace(CAMEL_CASE_PATTERN$1, REPLACE_TEMPLATE$1).toLowerCase();
+	};
+	var setDomAttrs$1 = function (element, attrs) {
+	    for (var key in attrs) {
+	        if (attrs.hasOwnProperty(key)) {
+	            element.setAttribute(key, attrs[key]);
+	        }
+	    }
+	};
+
+	var camelCache$1 = /*#__PURE__*/new Map();
+	var dashCache$1 = /*#__PURE__*/new Map();
+	var prefixes$1 = ['Webkit', 'Moz', 'O', 'ms', ''];
+	var numPrefixes$1 = prefixes$1.length;
+	var isBrowser$1 = typeof document !== 'undefined';
+	var testElement$1;
+	var setDashPrefix$1 = function (key, prefixed) {
+	    return dashCache$1.set(key, camelToDash$1(prefixed));
+	};
+	var testPrefix$1 = function (key) {
+	    testElement$1 = testElement$1 || document.createElement('div');
+	    for (var i = 0; i < numPrefixes$1; i++) {
+	        var prefix = prefixes$1[i];
+	        var noPrefix = prefix === '';
+	        var prefixedPropertyName = noPrefix ? key : prefix + key.charAt(0).toUpperCase() + key.slice(1);
+	        if (prefixedPropertyName in testElement$1.style || noPrefix) {
+	            camelCache$1.set(key, prefixedPropertyName);
+	            setDashPrefix$1(key, "" + (noPrefix ? '' : '-') + camelToDash$1(prefixedPropertyName));
+	        }
+	    }
+	};
+	var setServerProperty$1 = function (key) {
+	    return setDashPrefix$1(key, key);
+	};
+	var prefixer$1 = function (key, asDashCase) {
+	    if (asDashCase === void 0) {
+	        asDashCase = false;
+	    }
+	    var cache = asDashCase ? dashCache$1 : camelCache$1;
+	    if (!cache.has(key)) isBrowser$1 ? testPrefix$1(key) : setServerProperty$1(key);
+	    return cache.get(key) || key;
+	};
+
+	var axes$1 = ['', 'X', 'Y', 'Z'];
+	var order$1 = ['scale', 'rotate', 'skew', 'transformPerspective'];
+	var transformProps$1 = /*#__PURE__*/order$1.reduce(function (acc, key) {
+	    return axes$1.reduce(function (axesAcc, axesKey) {
+	        axesAcc.push(key + axesKey);
+	        return axesAcc;
+	    }, acc);
+	}, ['x', 'y', 'z']);
+	var transformPropDictionary$1 = /*#__PURE__*/transformProps$1.reduce(function (dict, key) {
+	    dict[key] = true;
+	    return dict;
+	}, {});
+	function isTransformProp$1(key) {
+	    return transformPropDictionary$1[key] === true;
+	}
+	function sortTransformProps$1(a, b) {
+	    return transformProps$1.indexOf(a) - transformProps$1.indexOf(b);
+	}
+	var transformOriginProps = /*#__PURE__*/new Set(['originX', 'originY', 'originZ']);
+	function isTransformOriginProp$1(key) {
+	    return transformOriginProps.has(key);
+	}
+
+	var rounded = /*#__PURE__*/__assign$5({}, number$1, { transform: Math.round });
+	var valueTypes$2 = {
+	    color: color$1,
+	    backgroundColor: color$1,
+	    outlineColor: color$1,
+	    fill: color$1,
+	    stroke: color$1,
+	    borderColor: color$1,
+	    borderTopColor: color$1,
+	    borderRightColor: color$1,
+	    borderBottomColor: color$1,
+	    borderLeftColor: color$1,
+	    borderWidth: px$1,
+	    borderTopWidth: px$1,
+	    borderRightWidth: px$1,
+	    borderBottomWidth: px$1,
+	    borderLeftWidth: px$1,
+	    borderRadius: px$1,
+	    radius: px$1,
+	    borderTopLeftRadius: px$1,
+	    borderTopRightRadius: px$1,
+	    borderBottomRightRadius: px$1,
+	    borderBottomLeftRadius: px$1,
+	    width: px$1,
+	    maxWidth: px$1,
+	    height: px$1,
+	    maxHeight: px$1,
+	    size: px$1,
+	    top: px$1,
+	    right: px$1,
+	    bottom: px$1,
+	    left: px$1,
+	    padding: px$1,
+	    paddingTop: px$1,
+	    paddingRight: px$1,
+	    paddingBottom: px$1,
+	    paddingLeft: px$1,
+	    margin: px$1,
+	    marginTop: px$1,
+	    marginRight: px$1,
+	    marginBottom: px$1,
+	    marginLeft: px$1,
+	    rotate: degrees$1,
+	    rotateX: degrees$1,
+	    rotateY: degrees$1,
+	    rotateZ: degrees$1,
+	    scale: scale$1,
+	    scaleX: scale$1,
+	    scaleY: scale$1,
+	    scaleZ: scale$1,
+	    skew: degrees$1,
+	    skewX: degrees$1,
+	    skewY: degrees$1,
+	    distance: px$1,
+	    x: px$1,
+	    y: px$1,
+	    z: px$1,
+	    perspective: px$1,
+	    opacity: alpha$1,
+	    originX: progressPercentage$1,
+	    originY: progressPercentage$1,
+	    originZ: px$1,
+	    zIndex: rounded
+	};
+	var getValueType$2 = function (key) {
+	    return valueTypes$2[key];
+	};
+	var getValueAsType = function (value, type) {
+	    return type && typeof value === 'number' ? type.transform(value) : value;
+	};
+
+	var SCROLL_LEFT$1 = 'scrollLeft';
+	var SCROLL_TOP$1 = 'scrollTop';
+	var scrollKeys$1 = /*#__PURE__*/new Set([SCROLL_LEFT$1, SCROLL_TOP$1]);
+
+	var blacklist$1 = /*#__PURE__*/new Set([SCROLL_LEFT$1, SCROLL_TOP$1, 'transform']);
+	var translateAlias = {
+	    x: 'translateX',
+	    y: 'translateY',
+	    z: 'translateZ'
+	};
+	function isCustomTemplate$1(v) {
+	    return typeof v === 'function';
+	}
+	function buildTransform$1(state, transform, transformKeys, transformIsDefault, enableHardwareAcceleration) {
+	    var transformString = '';
+	    var transformHasZ = false;
+	    transformKeys.sort(sortTransformProps$1);
+	    var numTransformKeys = transformKeys.length;
+	    for (var i = 0; i < numTransformKeys; i++) {
+	        var key = transformKeys[i];
+	        transformString += (translateAlias[key] || key) + "(" + transform[key] + ") ";
+	        transformHasZ = key === 'z' ? true : transformHasZ;
+	    }
+	    if (!transformHasZ && enableHardwareAcceleration) {
+	        transformString += 'translateZ(0)';
+	    } else {
+	        transformString = transformString.trim();
+	    }
+	    if (isCustomTemplate$1(state.transform)) {
+	        transformString = state.transform(transform, transformString);
+	    } else if (transformIsDefault) {
+	        transformString = 'none';
+	    }
+	    return transformString;
+	}
+	function buildStyleProperty$1(state, enableHardwareAcceleration, styles, transform, transformOrigin, transformKeys, isDashCase) {
+	    if (enableHardwareAcceleration === void 0) {
+	        enableHardwareAcceleration = true;
+	    }
+	    if (styles === void 0) {
+	        styles = {};
+	    }
+	    if (transform === void 0) {
+	        transform = {};
+	    }
+	    if (transformOrigin === void 0) {
+	        transformOrigin = {};
+	    }
+	    if (transformKeys === void 0) {
+	        transformKeys = [];
+	    }
+	    if (isDashCase === void 0) {
+	        isDashCase = false;
+	    }
+	    var transformIsDefault = true;
+	    var hasTransform = false;
+	    var hasTransformOrigin = false;
+	    for (var key in state) {
+	        var value = state[key];
+	        var valueType = getValueType$2(key);
+	        var valueAsType = getValueAsType(value, valueType);
+	        if (isTransformProp$1(key)) {
+	            hasTransform = true;
+	            transform[key] = valueAsType;
+	            transformKeys.push(key);
+	            if (transformIsDefault) {
+	                if (valueType.default && value !== valueType.default || !valueType.default && value !== 0) {
+	                    transformIsDefault = false;
+	                }
+	            }
+	        } else if (isTransformOriginProp$1(key)) {
+	            transformOrigin[key] = valueAsType;
+	            hasTransformOrigin = true;
+	        } else if (!blacklist$1.has(key) || !isCustomTemplate$1(valueAsType)) {
+	            styles[prefixer$1(key, isDashCase)] = valueAsType;
+	        }
+	    }
+	    if (hasTransform || typeof state.transform === 'function') {
+	        styles.transform = buildTransform$1(state, transform, transformKeys, transformIsDefault, enableHardwareAcceleration);
+	    }
+	    if (hasTransformOrigin) {
+	        styles.transformOrigin = (transformOrigin.originX || 0) + " " + (transformOrigin.originY || 0) + " " + (transformOrigin.originZ || 0);
+	    }
+	    return styles;
+	}
+	function createStyleBuilder$1(enableHardwareAcceleration) {
+	    if (enableHardwareAcceleration === void 0) {
+	        enableHardwareAcceleration = true;
+	    }
+	    var styles = {};
+	    var transform = {};
+	    var transformOrigin = {};
+	    var transformKeys = [];
+	    return function (state) {
+	        transformKeys.length = 0;
+	        buildStyleProperty$1(state, enableHardwareAcceleration, styles, transform, transformOrigin, transformKeys, true);
+	        return styles;
+	    };
+	}
+
+	function onRead(key, options) {
+	    var element = options.element,
+	        preparseOutput = options.preparseOutput;
+	    var defaultValueType = getValueType$2(key);
+	    if (isTransformProp$1(key)) {
+	        return defaultValueType ? defaultValueType.default || 0 : 0;
+	    } else if (scrollKeys$1.has(key)) {
+	        return element[key];
+	    } else {
+	        var domValue = window.getComputedStyle(element, null).getPropertyValue(prefixer$1(key, true)) || 0;
+	        return preparseOutput && defaultValueType && defaultValueType.test(domValue) && defaultValueType.parse ? defaultValueType.parse(domValue) : domValue;
+	    }
+	}
+	function onRender(state, _a, changedValues) {
+	    var element = _a.element,
+	        buildStyles = _a.buildStyles,
+	        hasCSSVariable = _a.hasCSSVariable;
+	    Object.assign(element.style, buildStyles(state));
+	    if (hasCSSVariable) {
+	        var numChangedValues = changedValues.length;
+	        for (var i = 0; i < numChangedValues; i++) {
+	            var key = changedValues[i];
+	            if (key.startsWith('--')) {
+	                element.style.setProperty(key, state[key]);
+	            }
+	        }
+	    }
+	    if (changedValues.indexOf(SCROLL_LEFT$1) !== -1) {
+	        element[SCROLL_LEFT$1] = state[SCROLL_LEFT$1];
+	    }
+	    if (changedValues.indexOf(SCROLL_TOP$1) !== -1) {
+	        element[SCROLL_TOP$1] = state[SCROLL_TOP$1];
+	    }
+	}
+	var cssStyler$1 = /*#__PURE__*/createStyler$1({
+	    onRead: onRead,
+	    onRender: onRender,
+	    uncachedValues: scrollKeys$1
+	});
+	function createCssStyler(element, _a) {
+	    if (_a === void 0) {
+	        _a = {};
+	    }
+	    var enableHardwareAcceleration = _a.enableHardwareAcceleration,
+	        props = __rest$2(_a, ["enableHardwareAcceleration"]);
+	    return cssStyler$1(__assign$5({ element: element, buildStyles: createStyleBuilder$1(enableHardwareAcceleration), preparseOutput: true }, props));
+	}
+
+	var camelCaseAttributes$1 = /*#__PURE__*/new Set(['baseFrequency', 'diffuseConstant', 'kernelMatrix', 'kernelUnitLength', 'keySplines', 'keyTimes', 'limitingConeAngle', 'markerHeight', 'markerWidth', 'numOctaves', 'targetX', 'targetY', 'surfaceScale', 'specularConstant', 'specularExponent', 'stdDeviation', 'tableValues']);
+
+	var ZERO_NOT_ZERO$1 = 0.0000001;
+	var progressToPixels = function (progress, length) {
+	    return progress * length + 'px';
+	};
+	var build$1 = function (state, dimensions, isPath, pathLength) {
+	    var hasTransform = false;
+	    var hasDashArray = false;
+	    var props = {};
+	    var dashArrayStyles = isPath ? {
+	        pathLength: '0',
+	        pathSpacing: "" + pathLength
+	    } : undefined;
+	    var scale$$1 = state.scale !== undefined ? state.scale || ZERO_NOT_ZERO$1 : state.scaleX || 1;
+	    var scaleY = state.scaleY !== undefined ? state.scaleY || ZERO_NOT_ZERO$1 : scale$$1 || 1;
+	    var transformOriginX = dimensions.width * (state.originX || 50) + dimensions.x;
+	    var transformOriginY = dimensions.height * (state.originY || 50) + dimensions.y;
+	    var scaleTransformX = -transformOriginX * (scale$$1 * 1);
+	    var scaleTransformY = -transformOriginY * (scaleY * 1);
+	    var scaleReplaceX = transformOriginX / scale$$1;
+	    var scaleReplaceY = transformOriginY / scaleY;
+	    var transform = {
+	        translate: "translate(" + state.x + ", " + state.y + ") ",
+	        scale: "translate(" + scaleTransformX + ", " + scaleTransformY + ") scale(" + scale$$1 + ", " + scaleY + ") translate(" + scaleReplaceX + ", " + scaleReplaceY + ") ",
+	        rotate: "rotate(" + state.rotate + ", " + transformOriginX + ", " + transformOriginY + ") ",
+	        skewX: "skewX(" + state.skewX + ") ",
+	        skewY: "skewY(" + state.skewY + ") "
+	    };
+	    for (var key in state) {
+	        if (state.hasOwnProperty(key)) {
+	            var value = state[key];
+	            if (isTransformProp$1(key)) {
+	                hasTransform = true;
+	            } else if (isPath && (key === 'pathLength' || key === 'pathSpacing') && typeof value === 'number') {
+	                hasDashArray = true;
+	                dashArrayStyles[key] = progressToPixels(value, pathLength);
+	            } else if (isPath && key === 'pathOffset') {
+	                props['stroke-dashoffset'] = progressToPixels(-value, pathLength);
+	            } else {
+	                var attrKey = !camelCaseAttributes$1.has(key) ? camelToDash$1(key) : key;
+	                props[attrKey] = value;
+	            }
+	        }
+	    }
+	    if (hasDashArray) {
+	        props['stroke-dasharray'] = dashArrayStyles.pathLength + ' ' + dashArrayStyles.pathSpacing;
+	    }
+	    if (hasTransform) {
+	        props.transform = '';
+	        for (var key in transform) {
+	            if (transform.hasOwnProperty(key)) {
+	                var defaultValue = key === 'scale' ? '1' : '0';
+	                props.transform += transform[key].replace(/undefined/g, defaultValue);
+	            }
+	        }
+	    }
+	    return props;
+	};
+
+	var int$1 = /*#__PURE__*/__assign$5({}, number$1, { transform: Math.round });
+	var valueTypes$1$1 = {
+	    fill: color$1,
+	    stroke: color$1,
+	    scale: scale$1,
+	    scaleX: scale$1,
+	    scaleY: scale$1,
+	    opacity: alpha$1,
+	    fillOpacity: alpha$1,
+	    strokeOpacity: alpha$1,
+	    numOctaves: int$1
+	};
+	var getValueType$1$1 = function (key) {
+	    return valueTypes$1$1[key];
+	};
+
+	var getDimensions$1 = function (element) {
+	    return typeof element.getBBox === 'function' ? element.getBBox() : element.getBoundingClientRect();
+	};
+	var getSVGElementDimensions$1 = function (element) {
+	    try {
+	        return getDimensions$1(element);
+	    } catch (e) {
+	        return { x: 0, y: 0, width: 0, height: 0 };
+	    }
+	};
+
+	var svgStyler$1 = /*#__PURE__*/createStyler$1({
+	    onRead: function (key, _a) {
+	        var element = _a.element;
+	        if (!isTransformProp$1(key)) {
+	            return element.getAttribute(key);
+	        } else {
+	            var valueType = getValueType$1$1(key);
+	            return valueType ? valueType.default : 0;
+	        }
+	    },
+	    onRender: function (state, _a) {
+	        var dimensions = _a.dimensions,
+	            element = _a.element,
+	            isPath = _a.isPath,
+	            pathLength = _a.pathLength;
+	        setDomAttrs$1(element, build$1(state, dimensions, isPath, pathLength));
+	    }
+	});
+	var svg$2 = function (element) {
+	    var dimensions = getSVGElementDimensions$1(element);
+	    var props = {
+	        element: element,
+	        dimensions: dimensions,
+	        isPath: false
+	    };
+	    if (element.tagName === 'path') {
+	        props.isPath = true;
+	        props.pathLength = element.getTotalLength();
+	    }
+	    return svgStyler$1(props);
+	};
+
+	var viewport$1 = /*#__PURE__*/createStyler$1({
+	    useCache: false,
+	    onRead: function (key) {
+	        return key === 'scrollTop' ? window.pageYOffset : window.pageXOffset;
+	    },
+	    onRender: function (_a) {
+	        var _b = _a.scrollTop,
+	            scrollTop = _b === void 0 ? 0 : _b,
+	            _c = _a.scrollLeft,
+	            scrollLeft = _c === void 0 ? 0 : _c;
+	        return window.scrollTo(scrollLeft, scrollTop);
+	    }
+	});
+
+	var cache$1 = /*#__PURE__*/new WeakMap();
+	var createDOMStyler$1 = function (node, props) {
+	    var styler;
+	    if (node instanceof HTMLElement) {
+	        styler = createCssStyler(node, props);
+	    } else if (node instanceof SVGElement) {
+	        styler = svg$2(node);
+	    } else if (node === window) {
+	        styler = viewport$1(node);
+	    }
+	    invariant(styler !== undefined, 'No valid node provided. Node must be HTMLElement, SVGElement or window.');
+	    cache$1.set(node, styler);
+	    return styler;
+	};
+	var getStyler$1 = function (node, props) {
+	    return cache$1.has(node) ? cache$1.get(node) : createDOMStyler$1(node, props);
+	};
+	function index$2(nodeOrSelector, props) {
+	    var node = typeof nodeOrSelector === 'string' ? document.querySelector(nodeOrSelector) : nodeOrSelector;
+	    return getStyler$1(node, props);
+	}
+
 	var dist = createCommonjsModule(function (module, exports) {
+	// TODO: we may use parallel() to use multiple animation type, like tween and spring
 	var __assign = (commonjsGlobal && commonjsGlobal.__assign) || function () {
 	    __assign = Object.assign || function(t) {
 	        for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -3052,19 +3755,54 @@
 	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 
-	var GridWall = /** @class */ (function () {
-	    function GridWall(params) {
+
+	var defaultAnimations = {
+	    onEnter: {
+	        translate: false,
+	        from: { opacity: 0, scale: 0.5 },
+	        to: { opacity: 1, scale: 1 },
+	    },
+	    onChange: { translate: true },
+	    onExit: {
+	        from: { opacity: 1, scale: 1 },
+	        to: { opacity: 0, scale: 0.75 },
+	        duration: 200,
+	    },
+	};
+	var Tile = /** @class */ (function () {
+	    function Tile(_a) {
+	        var element = _a.element, id = _a.id;
+	        this.id = id;
+	        this.element = element;
+	        this.styler = index$2.default(element);
+	        this.firstRender = true;
+	        this.x = 0;
+	        this.y = 0;
+	        this.onEnterAnimations = { from: {}, to: {} };
+	        this.onChangeAnimations = { from: {}, to: {} };
+	        this.onExitAnimations = { from: {}, to: {} };
+	        this.element.style.transform = 'translateX(0px) translateY(0px)';
+	        this.element.setAttribute('data-gw-id', id.toString());
+	    }
+	    Tile.prototype.setCoords = function (x, y) {
+	        this.x = x;
+	        this.y = y;
+	    };
+	    return Tile;
+	}());
+	var Tiles = /** @class */ (function () {
+	    function Tiles(params) {
 	        var _this = this;
 	        this.addAfterStyle = function (event) {
 	            if (event.target instanceof HTMLElement) {
-	                GridWall.addStyles(event.target, _this.afterStyle);
 	                event.target.setAttribute('data-gw-transition', 'true');
 	                event.target.removeEventListener('transitionend', _this.addAfterStyle, true);
 	            }
 	        };
+	        // debugger;
 	        if (!params)
 	            throw new Error('Missing mandatory parameters!');
-	        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, _a = params.onEnter, onEnter = _a === void 0 ? [{ type: 'tween', property: 'opacity', from: 0, to: 1 }] : _a, _b = params.onChange, onChange = _b === void 0 ? [{ type: 'spring', property: 'position', enabled: true }] : _b, _c = params.onExit, onExit = _c === void 0 ? [{ type: 'tween', property: 'opacity', from: 1, to: 0 }] : _c, _d = params.insertStyle, insertStyle = _d === void 0 ? {} : _d, _e = params.beforeStyle, beforeStyle = _e === void 0 ? {} : _e, _f = params.afterStyle, afterStyle = _f === void 0 ? {} : _f;
+	        var container = params.container, childrenWidthInPx = params.childrenWidthInPx, enableResize = params.enableResize, resizeDebounceInMs = params.resizeDebounceInMs, margin = params.margin, onEnter = params.onEnter, onChange = params.onChange, onExit = params.onExit, _a = params.springProperties, springProperties = _a === void 0 ? { stiffness: 120, damping: 14, mass: 1 } : _a;
 	        this.missingParameter({ container: container, childrenWidthInPx: childrenWidthInPx });
 	        this.container = container;
 	        this.childrenWidth = childrenWidthInPx;
@@ -3075,14 +3813,10 @@
 	        this.enableResize = enableResize || false;
 	        this.resizeDebounceInMs = resizeDebounceInMs || 100;
 	        this.containerClassName = 'gw-container';
-	        this.insertStyle = insertStyle;
-	        this.beforeStyle = beforeStyle;
-	        this.afterStyle = afterStyle;
-	        this.onEnter = onEnter;
-	        this.onChange = onChange;
-	        this.positionAnimationEnabled = this.isPositionAnimationEnabled();
-	        this.onExit = onExit;
-	        this.springProperties = { stiffness: 100, damping: 14, mass: 1 };
+	        this.onEnter = typeof onEnter === 'undefined' ? defaultAnimations.onEnter : null;
+	        this.onChange = typeof onChange === 'undefined' ? defaultAnimations.onChange : null;
+	        this.onExit = typeof onExit === 'undefined' ? defaultAnimations.onExit : null;
+	        this.springProperties = springProperties;
 	        // we have to apply styles to DOM before doing any calculation
 	        this.addStyleToDOM();
 	        this.children = this.getInitialChildren();
@@ -3091,15 +3825,13 @@
 	        this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
 	        this.setChildrenWidth();
 	        this.setChildrenHeight();
-	        // this.setInitialChildrenTransition();
 	        this.listenToResize();
 	        this.marginWidth = this.calculateMargin();
 	        this.addMutationObserverToContainer();
 	        this.addMutationObserverToChildren();
-	        // spring({ from: 0, to: 110 }).start((v: number) => console.log(v));
 	        this.reflow();
 	    }
-	    GridWall.prototype.missingParameter = function (params) {
+	    Tiles.prototype.missingParameter = function (params) {
 	        var missingParams = [];
 	        Object.entries(params).forEach(function (_a) {
 	            var name = _a[0], param = _a[1];
@@ -3113,7 +3845,7 @@
 	            throw new Error(message_1);
 	        }
 	    };
-	    GridWall.prototype.calculateMargin = function () {
+	    Tiles.prototype.calculateMargin = function () {
 	        if (this.margin === 'right')
 	            return 0;
 	        if (this.columnsCount <= 1)
@@ -3124,48 +3856,39 @@
 	            return remainingSpace;
 	        return Math.floor(remainingSpace / 2);
 	    };
-	    GridWall.debounce = function (callback, wait) {
+	    Tiles.debounce = function (callback, wait) {
 	        var interval;
 	        return function () {
 	            clearTimeout(interval);
 	            interval = setTimeout(callback, wait);
 	        };
 	    };
-	    GridWall.prototype.listenToResize = function () {
+	    Tiles.prototype.listenToResize = function () {
 	        var _this = this;
 	        if (this.enableResize) {
 	            var wait = this.resizeDebounceInMs;
-	            window.addEventListener('resize', GridWall.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
+	            window.addEventListener('resize', Tiles.debounce(function () { return _this.resize(_this.container.clientWidth); }, wait));
 	        }
 	    };
-	    GridWall.prototype.setChildId = function (child) {
+	    Tiles.prototype.setChildId = function (child) {
 	        this.childLastId = this.childLastId + 1;
 	        var id = this.childLastId.toString();
-	        child.setAttribute('data-gw-id', id);
+	        child.element.setAttribute('data-gw-id', id);
 	        return id;
 	    };
-	    GridWall.prototype.setChildrenHeight = function () {
+	    Tiles.prototype.setChildrenHeight = function () {
 	        var _this = this;
 	        this.children.forEach(function (child) {
-	            var id = child.getAttribute('data-gw-id');
+	            var id = child.element.getAttribute('data-gw-id');
 	            if (!id)
 	                id = _this.setChildId(child);
-	            _this.childrenHeights[id] = child.offsetHeight;
+	            _this.childrenHeights[id] = child.element.offsetHeight;
 	        });
 	    };
-	    GridWall.prototype.setInitialChildrenTransition = function () {
-	        var _this = this;
-	        this.children.forEach(function (child) {
-	            GridWall.addStyles(child, _this.insertStyle);
-	        });
-	    };
-	    GridWall.prototype.isPositionAnimationEnabled = function () {
-	        return true;
-	    };
-	    GridWall.prototype.resetColumnsHeight = function () {
+	    Tiles.prototype.resetColumnsHeight = function () {
 	        this.columnsHeight = [];
 	    };
-	    GridWall.prototype.addStyleToDOM = function () {
+	    Tiles.prototype.addStyleToDOM = function () {
 	        var head = document.querySelector('head');
 	        if (head) {
 	            var style = document.createElement('style');
@@ -3182,64 +3905,88 @@
 	            head.appendChild(style);
 	        }
 	    };
-	    GridWall.setWidth = function (element, width) {
-	        element.style.width = width + "px";
+	    Tiles.setWidth = function (element, width) {
+	        element.element.style.width = width + "px";
 	    };
-	    GridWall.addStyles = function (element, styles) {
-	        for (var property in styles) {
-	            if (element.style.hasOwnProperty(property)) {
-	                element.style[property] = styles[property];
-	            }
-	        }
-	    };
-	    GridWall.prototype.removeChild = function (index, callback) {
-	        // remove children with animation
-	        // on animation end do callback
-	    };
-	    GridWall.prototype.getInitialChildren = function () {
+	    Tiles.prototype.getInitialChildren = function () {
 	        var _this = this;
 	        var children = [];
 	        if (this.container.children.length > 0) {
 	            Array.from(this.container.children).forEach(function (child) {
 	                if (child instanceof HTMLElement) {
-	                    child.style.transform = 'translate(0px, 0px)';
-	                    _this.setChildId(child);
-	                    children.push(child);
+	                    var tile = new Tile({ element: child, id: _this.childLastId + 1 });
+	                    tile.firstRender = true;
+	                    tile.element.style.transform = 'translateX(0px) translateY(0px)';
+	                    _this.setChildId(tile);
+	                    children.push(tile);
 	                }
 	            });
 	        }
 	        return children;
 	    };
-	    GridWall.prototype._addChild = function (child) {
+	    Tiles.prototype._addChild = function (child) {
+	        this.childLastId = child.id;
 	        this.children.push(child);
 	    };
-	    GridWall.prototype._removeChild = function (child) {
-	        var id = child.getAttribute('data-gw-id');
-	        this.children = this.children.filter(function (c) { return c.getAttribute('data-gw-id') !== id; });
+	    // after a child is removed, we append it back
+	    // just to animate it out, then remove it for real and reflow
+	    // this feels kinda hacky but it works
+	    Tiles.prototype._handleRemoveChild = function (element) {
+	        var _this = this;
+	        if (this.onExit) {
+	            element.setAttribute('data-gw-removing', 'true');
+	            this.container.appendChild(element);
+	            var from = __assign({}, this.onExit.from);
+	            var to = __assign({}, this.onExit.to);
+	            var duration = this.onExit.duration || 150;
+	            if (Object.keys(from).length > 0 && Object.keys(to).length > 0) {
+	                var animation = popmotion_es.tween({
+	                    from: from,
+	                    to: to,
+	                    duration: duration,
+	                });
+	                animation.start({
+	                    update: function (v) { return index$2.default(element).set(v); },
+	                    complete: function () {
+	                        element.setAttribute('data-gw-removing', 'false');
+	                        element.remove();
+	                        _this._removeChild(element);
+	                        _this.reflow();
+	                    },
+	                });
+	            }
+	        }
+	        else {
+	            this._removeChild(element);
+	        }
 	    };
-	    GridWall.prototype.setChildrenWidth = function () {
+	    Tiles.prototype._removeChild = function (element) {
+	        var id = element.getAttribute('data-gw-id');
+	        this.children = this.children.filter(function (c) { return c.element.getAttribute('data-gw-id') !== id; });
+	    };
+	    Tiles.prototype.setChildrenWidth = function () {
 	        var _this = this;
 	        if (this.children.length > 0) {
 	            this.children.forEach(function (child) {
-	                GridWall.setWidth(child, _this.childrenWidth);
+	                Tiles.setWidth(child, _this.childrenWidth);
 	            });
 	        }
 	    };
-	    GridWall.prototype.addMutationObserverToContainer = function () {
+	    Tiles.prototype.addMutationObserverToContainer = function () {
 	        var _this = this;
 	        var containerObserver = new MutationObserver(function (m) { return _this.handleContainerMutation(m); });
 	        containerObserver.observe(this.container, { childList: true });
 	    };
-	    GridWall.prototype.addMutationObserverToChildren = function () {
+	    Tiles.prototype.addMutationObserverToChildren = function () {
 	        var _this = this;
 	        if (this.children.length > 0) {
 	            this.children.forEach(function (child) {
 	                var containerObserver = new MutationObserver(function (m) { return _this.handleChildrenMutation(m); });
-	                containerObserver.observe(child, { attributes: true });
+	                containerObserver.observe(child.element, { attributes: true });
 	            });
 	        }
 	    };
-	    GridWall.prototype.getLowerColumn = function () {
+	    Tiles.prototype.getLowerColumn = function () {
 	        var lower = { index: 0, height: 0 };
 	        if (this.columnsHeight.length > 0) {
 	            this.columnsHeight.forEach(function (height, index) {
@@ -3251,41 +3998,91 @@
 	        }
 	        return lower;
 	    };
-	    GridWall.getMaxHeight = function (columnsHeight) {
+	    Tiles.getMaxHeight = function (columnsHeight) {
 	        return Math.max.apply(Math, columnsHeight);
 	    };
-	    GridWall.prototype.reflow = function () {
+	    Tiles.prototype.reflow = function () {
 	        var _this = this;
 	        this.resetColumnsHeight();
 	        this.marginWidth = this.calculateMargin();
 	        this.children.forEach(function (child, index) {
 	            var column = index;
-	            var childStyler = popmotion_es.styler(child);
-	            var transform = "translate(" + (column * _this.childrenWidth + _this.marginWidth) + "px, 0px)";
+	            var x = column * _this.childrenWidth + _this.marginWidth;
+	            var y = 0;
 	            if ((column + 1) * _this.childrenWidth >= _this.containerWidth) {
 	                var lowerColumn = _this.getLowerColumn();
 	                column = lowerColumn.index;
-	                var x = column * _this.childrenWidth;
-	                transform = "translate(" + (_this.marginWidth + x) + "px, " + lowerColumn.height + "px)";
+	                x = _this.marginWidth + column * _this.childrenWidth;
+	                y = lowerColumn.height;
 	            }
 	            _this.columnsHeight[column] = Number.isInteger(_this.columnsHeight[column])
-	                ? _this.columnsHeight[column] + child.offsetHeight
-	                : child.offsetHeight;
-	            if (_this.positionAnimationEnabled) {
-	                var oldTransform = child.style.transform;
-	                var animation = popmotion_es.spring(__assign({ from: oldTransform, to: transform }, _this.springProperties));
-	                if (child.animationStop)
-	                    child.animationStop.stop();
-	                child.animationStop = animation.start(function (v) { return (child.style.transform = v); });
-	            }
-	            else {
-	                child.style.transform = transform;
-	            }
+	                ? _this.columnsHeight[column] + child.element.offsetHeight
+	                : child.element.offsetHeight;
+	            // TODO: move logic to Tile
+	            // child.move(x, y)
+	            _this.moveChild({ child: child, x: x, y: y });
+	            child.setCoords(x, y);
+	            // child.firstRender = false;
 	        });
-	        this.container.style.height = GridWall.getMaxHeight(this.columnsHeight) + 'px';
+	        this.container.style.height = Tiles.getMaxHeight(this.columnsHeight) + 'px';
 	        this.setChildrenHeight();
 	    };
-	    GridWall.prototype.resize = function (containerWidthInPx) {
+	    Tiles.prototype.moveChild = function (_a) {
+	        var child = _a.child, x = _a.x, y = _a.y;
+	        var animation = null;
+	        var from = {};
+	        var to = {};
+	        var fromTranslate = {};
+	        var toTranslate = {};
+	        if (child.firstRender && this.onEnter) {
+	            from = __assign({}, this.onEnter.from);
+	            to = __assign({}, this.onEnter.to);
+	        }
+	        else if (this.onChange) {
+	            from = __assign({}, this.onChange.from);
+	            to = __assign({}, this.onChange.to);
+	        }
+	        if ((this.onChange && this.onChange.translate && !child.firstRender) ||
+	            (this.onEnter && this.onEnter.translate && child.firstRender)) {
+	            // if we are moving the child to a new position
+	            // get the new position and restart the animation
+	            // else we leave x and y null so it ends the running animation
+	            // without starting a new one
+	            if (x !== child.x || y !== child.y) {
+	                var oldCoords = { x: 0, y: 0 };
+	                if (child.element.style.transform) {
+	                    var regexTransform = /translateX\((-?\d+)?.\w+\).+translateY\((-?\d+)?.\w+\)/;
+	                    var match = child.element.style.transform.match(regexTransform);
+	                    if (match && match[1] && match[2]) {
+	                        oldCoords.x = parseInt(match[1]);
+	                        oldCoords.y = parseInt(match[2]);
+	                    }
+	                }
+	                fromTranslate = { x: oldCoords.x, y: oldCoords.y };
+	                toTranslate = { x: x, y: y };
+	            }
+	        }
+	        else {
+	            // console.log('set', { x, y });
+	            child.styler.set({ x: x, y: y });
+	            // console.log(child.element.style.transform);
+	        }
+	        from = __assign({}, from, fromTranslate);
+	        to = __assign({}, to, toTranslate);
+	        if (Object.keys(from).length > 0 && Object.keys(to).length > 0) {
+	            animation = popmotion_es.spring(__assign({ from: from,
+	                to: to }, this.springProperties));
+	            if (child.animationStop && !child.firstRender)
+	                child.animationStop.stop();
+	            if (x !== child.x || y !== child.y) {
+	                child.animationStop = animation.start({
+	                    update: function (v) { return child.styler.set(v); },
+	                    complete: function () { return (child.firstRender = false); },
+	                });
+	            }
+	        }
+	    };
+	    Tiles.prototype.resize = function (containerWidthInPx) {
 	        if (!containerWidthInPx && !Number.isNaN(containerWidthInPx)) {
 	            throw new Error('Width must be a number and more than 0');
 	        }
@@ -3293,7 +4090,7 @@
 	        this.columnsCount = Math.floor(this.containerWidth / this.childrenWidth);
 	        this.reflow();
 	    };
-	    GridWall.prototype.handleChildrenMutation = function (mutations, callback) {
+	    Tiles.prototype.handleChildrenMutation = function (mutations, callback) {
 	        var _this = this;
 	        mutations.forEach(function (mutation) {
 	            var elem = mutation.target;
@@ -3308,38 +4105,45 @@
 	        if (callback && typeof callback === 'function')
 	            callback();
 	    };
-	    GridWall.prototype.handleContainerMutation = function (mutations, callback) {
+	    Tiles.prototype.handleContainerMutation = function (mutations, callback) {
 	        var _this = this;
 	        mutations.forEach(function (mutation) {
 	            if (mutation.type === 'childList') {
-	                mutation.addedNodes.forEach(function (child) {
-	                    if (child instanceof HTMLElement) {
-	                        GridWall.addStyles(child, _this.insertStyle);
-	                        GridWall.setWidth(child, _this.childrenWidth);
-	                        child.style.transform = 'translate(0px, 0px)';
-	                        _this.setChildId(child);
-	                        _this._addChild(child);
+	                mutation.addedNodes.forEach(function (element) {
+	                    if (element instanceof HTMLElement) {
+	                        if (element.getAttribute('data-gw-removing') === 'true') {
+	                            if (callback && typeof callback === 'function')
+	                                callback();
+	                            return;
+	                        }
+	                        var tile = new Tile({ element: element, id: _this.childLastId + 1 });
+	                        Tiles.setWidth(tile, _this.childrenWidth);
+	                        _this._addChild(tile);
 	                    }
 	                });
-	                mutation.removedNodes.forEach(function (child) {
-	                    if (child instanceof HTMLElement) {
-	                        _this._removeChild(child);
+	                mutation.removedNodes.forEach(function (element) {
+	                    if (element instanceof HTMLElement) {
+	                        if (element.getAttribute('data-gw-removing') === 'false') {
+	                            if (callback && typeof callback === 'function')
+	                                callback();
+	                            return;
+	                        }
+	                        _this._handleRemoveChild(element);
 	                    }
 	                });
-	                // this.children = this.getChildren();
 	                _this.reflow();
 	            }
 	        });
 	        if (callback && typeof callback === 'function')
 	            callback();
 	    };
-	    return GridWall;
+	    return Tiles;
 	}());
-	exports.default = GridWall;
+	exports.default = Tiles;
 	});
 
-	var index$2 = unwrapExports(dist);
+	var index$3 = unwrapExports(dist);
 
-	return index$2;
+	return index$3;
 
 }));

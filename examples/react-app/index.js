@@ -44,6 +44,7 @@ function randomStyle() {
 
 function App() {
   const containerRef = React.useRef();
+  const [loadedGW, setLoadedGW] = React.useState(false)
   const [tiles, setTiles] = React.useState([
     { id: 1, style: randomStyle() },
     { id: 2, style: randomStyle() },
@@ -76,6 +77,7 @@ function App() {
       childrenWidthInPx: 200,
       enableResize: true,
     });
+    setLoadedGW(true)
   }, []);
 
   return (
@@ -86,7 +88,7 @@ function App() {
         </button>
       </div>
       <div ref={containerRef}>
-        {tiles.map(tile => (
+        {loadedGW && tiles.map(tile => (
           <Tile key={tile.id} {...tile} remove={() => removePost(tile.id)} />
         ))}
       </div>

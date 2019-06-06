@@ -1,4 +1,6 @@
-import { spring, tween, Action, ColdSubscription } from 'popmotion';
+// TODO: we may use parallel() to use multiple animation type, like tween and spring
+
+import { spring, Action, ColdSubscription, tween } from 'popmotion';
 import styler, { Styler } from 'stylefire';
 
 interface GridWallParameters {
@@ -7,34 +9,44 @@ interface GridWallParameters {
   enableResize?: boolean;
   margin?: 'center' | 'left' | 'right';
   resizeDebounceInMs?: number;
-  onEnter?: Animations;
-  onChange?: Animations;
-  onExit?: Animations;
-  insertStyle?: CSSStyleDeclaration;
-  beforeStyle?: CSSStyleDeclaration;
-  afterStyle?: CSSStyleDeclaration;
+  onEnter?: Animations | null;
+  onChange?: Animations | null;
+  onExit?: Animations | null;
+  springProperties?: SpringProperties;
 }
 
-type AnimationTypes = 'spring' | 'tween';
-
 interface Animations {
-  //types: AnimationTypes[];
-  // properties: string[];
   translate?: boolean;
   from?: { [key: string]: number | string };
   to?: { [key: string]: number | string };
+  duration?: number;
 }
 
-// interface ChildElement extends HTMLElement {
-//   animations?: Action[];
-//   animationStop?: ColdSubscription;
-//   firstRender?: boolean;
-// }
+interface SpringProperties {
+  stiffness: number;
+  damping: number;
+  mass: number;
+}
+
+const defaultAnimations = {
+  onEnter: {
+    translate: false,
+    from: { opacity: 0, scale: 0.5 },
+    to: { opacity: 1, scale: 1 },
+  } as Animations,
+  onChange: { translate: true } as Animations,
+  onExit: {
+    from: { opacity: 1, scale: 1 },
+    to: { opacity: 0, scale: 0.75 },
+    duration: 200,
+  } as Animations,
+};
 
 class Tile {
   id: number;
   onEnterAnimations: Animations;
   onChangeAnimations: Animations;
+  onExitAnimations: Animations;
   animations?: Animations;
   animationStop?: ColdSubscription;
   x: number;
@@ -52,9 +64,15 @@ class Tile {
     this.y = 0;
     this.onEnterAnimations = { from: {}, to: {} };
     this.onChangeAnimations = { from: {}, to: {} };
+    this.onExitAnimations = { from: {}, to: {} };
 
     this.element.style.transform = 'translateX(0px) translateY(0px)';
     this.element.setAttribute('data-gw-id', id.toString());
+  }
+
+  setCoords(x: number, y: number) {
+    this.x = x;
+    this.y = y;
   }
 }
 
@@ -72,12 +90,13 @@ export default class Tiles {
   columnsHeight: number[];
   childLastId: number;
   containerClassName: string;
-  springProperties: { stiffness: number; damping: number; mass: number };
-  onEnter: Animations;
-  onChange: Animations;
-  onExit: Animations;
+  springProperties: SpringProperties;
+  onEnter: Animations | null;
+  onChange: Animations | null;
+  onExit: Animations | null;
 
   constructor(params: GridWallParameters) {
+    // debugger;
     if (!params) throw new Error('Missing mandatory parameters!');
     const {
       container,
@@ -85,15 +104,10 @@ export default class Tiles {
       enableResize,
       resizeDebounceInMs,
       margin,
-      onEnter = {
-        // types: ['tween'],
-        // properties: ['opacity', 'scale'],
-        translate: false,
-        from: { opacity: 0, scale: 0.5 },
-        to: { opacity: 1, scale: 1 },
-      } as Animations,
-      onChange = { translate: true } as Animations,
-      onExit = { types: ['tween'], from: { opacity: 1 }, to: { opacity: 0 } } as Animations,
+      onEnter,
+      onChange,
+      onExit,
+      springProperties = { stiffness: 120, damping: 14, mass: 1 },
     } = params;
     this.missingParameter({ container, childrenWidthInPx });
 
@@ -106,10 +120,10 @@ export default class Tiles {
     this.enableResize = enableResize || false;
     this.resizeDebounceInMs = resizeDebounceInMs || 100;
     this.containerClassName = 'gw-container';
-    this.onEnter = onEnter;
-    this.onChange = onChange;
-    this.onExit = onExit;
-    this.springProperties = { stiffness: 120, damping: 14, mass: 1 };
+    this.onEnter = typeof onEnter === 'undefined' ? defaultAnimations.onEnter : null;
+    this.onChange = typeof onChange === 'undefined' ? defaultAnimations.onChange : null;
+    this.onExit = typeof onExit === 'undefined' ? defaultAnimations.onExit : null;
+    this.springProperties = springProperties;
 
     // we have to apply styles to DOM before doing any calculation
     this.addStyleToDOM();
@@ -121,12 +135,10 @@ export default class Tiles {
 
     this.setChildrenWidth();
     this.setChildrenHeight();
-    // this.setInitialChildrenTransition();
     this.listenToResize();
     this.marginWidth = this.calculateMargin();
     this.addMutationObserverToContainer();
     this.addMutationObserverToChildren();
-    // spring({ from: 0, to: 110 }).start((v: number) => console.log(v));
 
     this.reflow();
   }
@@ -189,11 +201,6 @@ export default class Tiles {
     });
   }
 
-  isPositionAnimationEnabled(): boolean {
-    return true;
-    // return Boolean(this.onChange.properties.find(property => property === 'position'));
-  }
-
   resetColumnsHeight(): void {
     this.columnsHeight = [];
   }
@@ -222,19 +229,6 @@ export default class Tiles {
     element.element.style.width = `${width}px`;
   }
 
-  static addStyles(element: Tile, styles: CSSStyleDeclaration) {
-    for (let property in styles) {
-      if (element.element.style.hasOwnProperty(property)) {
-        element.element.style[property as any] = styles[property];
-      }
-    }
-  }
-
-  removeChild(index: number, callback: () => void): void {
-    // remove children with animation
-    // on animation end do callback
-  }
-
   getInitialChildren(): Tile[] {
     let children: Tile[] = [];
     if (this.container.children.length > 0) {
@@ -254,6 +248,40 @@ export default class Tiles {
   private _addChild(child: Tile): void {
     this.childLastId = child.id;
     this.children.push(child);
+  }
+
+  // after a child is removed, we append it back
+  // just to animate it out, then remove it for real and reflow
+  // this feels kinda hacky but it works
+  private _handleRemoveChild(element: HTMLElement) {
+    if (this.onExit) {
+      element.setAttribute('data-gw-removing', 'true');
+      this.container.appendChild(element);
+
+      let from = { ...this.onExit.from };
+      let to = { ...this.onExit.to };
+      const duration = this.onExit.duration || 150;
+
+      if (Object.keys(from).length > 0 && Object.keys(to).length > 0) {
+        const animation = tween({
+          from,
+          to,
+          duration,
+        });
+
+        animation.start({
+          update: (v: any) => styler(element).set(v),
+          complete: () => {
+            element.setAttribute('data-gw-removing', 'false');
+            element.remove();
+            this._removeChild(element);
+            this.reflow();
+          },
+        });
+      }
+    } else {
+      this._removeChild(element);
+    }
   }
 
   private _removeChild(element: HTMLElement): void {
@@ -326,39 +354,40 @@ export default class Tiles {
         ? this.columnsHeight[column] + child.element.offsetHeight
         : child.element.offsetHeight;
 
+      // TODO: move logic to Tile
+      // child.move(x, y)
       this.moveChild({ child, x, y });
 
-      child.x = x;
-      child.y = y;
-      child.firstRender = false;
+      child.setCoords(x, y);
+      // child.firstRender = false;
     });
     this.container.style.height = Tiles.getMaxHeight(this.columnsHeight) + 'px';
     this.setChildrenHeight();
   }
 
   moveChild({ child, x, y }: { child: Tile; x: number; y: number }) {
-    // add animations
-    // check if can translate
-    // if did not animate translate, translate
-    // animate all
     let animation: Action | null = null;
     let from = {};
     let to = {};
     let fromTranslate = {};
     let toTranslate = {};
 
-    if (child.firstRender) {
+    if (child.firstRender && this.onEnter) {
       from = { ...this.onEnter.from };
       to = { ...this.onEnter.to };
-    } else {
+    } else if (this.onChange) {
       from = { ...this.onChange.from };
       to = { ...this.onChange.to };
     }
 
     if (
-      (this.onChange.translate && !child.firstRender) ||
-      (this.onEnter.translate && child.firstRender)
+      (this.onChange && this.onChange.translate && !child.firstRender) ||
+      (this.onEnter && this.onEnter.translate && child.firstRender)
     ) {
+      // if we are moving the child to a new position
+      // get the new position and restart the animation
+      // else we leave x and y null so it ends the running animation
+      // without starting a new one
       if (x !== child.x || y !== child.y) {
         let oldCoords = { x: 0, y: 0 };
         if (child.element.style.transform) {
@@ -373,7 +402,9 @@ export default class Tiles {
         toTranslate = { x, y };
       }
     } else {
+      // console.log('set', { x, y });
       child.styler.set({ x, y });
+      // console.log(child.element.style.transform);
     }
 
     from = { ...from, ...fromTranslate };
@@ -386,8 +417,13 @@ export default class Tiles {
         ...this.springProperties,
       });
 
-      if (child.animationStop) child.animationStop.stop();
-      animation.start((v: any) => child.styler.set(v));
+      if (child.animationStop && !child.firstRender) child.animationStop.stop();
+      if (x !== child.x || y !== child.y) {
+        child.animationStop = animation.start({
+          update: (v: any) => child.styler.set(v),
+          complete: () => (child.firstRender = false),
+        });
+      }
     }
   }
 
@@ -422,18 +458,26 @@ export default class Tiles {
       if (mutation.type === 'childList') {
         mutation.addedNodes.forEach(element => {
           if (element instanceof HTMLElement) {
+            if (element.getAttribute('data-gw-removing') === 'true') {
+              if (callback && typeof callback === 'function') callback();
+              return;
+            }
             const tile = new Tile({ element, id: this.childLastId + 1 });
             Tiles.setWidth(tile, this.childrenWidth);
             this._addChild(tile);
           }
         });
 
-        mutation.removedNodes.forEach(elem => {
-          if (elem instanceof HTMLElement) {
-            this._removeChild(elem);
+        mutation.removedNodes.forEach(element => {
+          if (element instanceof HTMLElement) {
+            if (element.getAttribute('data-gw-removing') === 'false') {
+              if (callback && typeof callback === 'function') callback();
+              return;
+            }
+            this._handleRemoveChild(element);
           }
         });
-        // this.children = this.getChildren();
+
         this.reflow();
       }
     });

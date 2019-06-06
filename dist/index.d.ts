@@ -6,12 +6,10 @@ interface GridWallParameters {
     enableResize?: boolean;
     margin?: 'center' | 'left' | 'right';
     resizeDebounceInMs?: number;
-    onEnter?: Animations;
-    onChange?: Animations;
-    onExit?: Animations;
-    insertStyle?: CSSStyleDeclaration;
-    beforeStyle?: CSSStyleDeclaration;
-    afterStyle?: CSSStyleDeclaration;
+    onEnter?: Animations | null;
+    onChange?: Animations | null;
+    onExit?: Animations | null;
+    springProperties?: SpringProperties;
 }
 interface Animations {
     translate?: boolean;
@@ -21,11 +19,18 @@ interface Animations {
     to?: {
         [key: string]: number | string;
     };
+    duration?: number;
+}
+interface SpringProperties {
+    stiffness: number;
+    damping: number;
+    mass: number;
 }
 declare class Tile {
     id: number;
     onEnterAnimations: Animations;
     onChangeAnimations: Animations;
+    onExitAnimations: Animations;
     animations?: Animations;
     animationStop?: ColdSubscription;
     x: number;
@@ -37,6 +42,7 @@ declare class Tile {
         element: HTMLElement;
         id: number;
     });
+    setCoords(x: number, y: number): void;
 }
 export default class Tiles {
     container: HTMLElement;
@@ -54,14 +60,10 @@ export default class Tiles {
     columnsHeight: number[];
     childLastId: number;
     containerClassName: string;
-    springProperties: {
-        stiffness: number;
-        damping: number;
-        mass: number;
-    };
-    onEnter: Animations;
-    onChange: Animations;
-    onExit: Animations;
+    springProperties: SpringProperties;
+    onEnter: Animations | null;
+    onChange: Animations | null;
+    onExit: Animations | null;
     constructor(params: GridWallParameters);
     missingParameter(params: {
         [name: string]: any;
@@ -71,14 +73,12 @@ export default class Tiles {
     listenToResize(): void;
     setChildId(child: Tile): string;
     setChildrenHeight(): void;
-    isPositionAnimationEnabled(): boolean;
     resetColumnsHeight(): void;
     addStyleToDOM(): void;
     static setWidth(element: Tile, width: number): void;
-    static addStyles(element: Tile, styles: CSSStyleDeclaration): void;
-    removeChild(index: number, callback: () => void): void;
     getInitialChildren(): Tile[];
     private _addChild;
+    private _handleRemoveChild;
     private _removeChild;
     setChildrenWidth(): void;
     addMutationObserverToContainer(): void;
